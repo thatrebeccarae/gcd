@@ -1,0 +1,26 @@
+name: Validate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate JSON files
+        run: find . -name "*.json" -exec python3 -c "import json,sys; json.load(open(sys.argv[1]))" {} \;
+
+      - name: Check required files exist
+        run: |
+          for file in README.md LICENSE .gitignore; do
+            if [ ! -f "$file" ]; then
+              echo "ERROR: Missing required file: $file"
+              exit 1
+            fi
+          done
+          echo "All required files present."

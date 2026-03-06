@@ -1,0 +1,67 @@
+{
+  "version": "1.0",
+  "quality_gate": {
+    "min_impact_score": 15,
+    "min_composite_score": 0.4,
+    "stale_days": 14,
+    "prefer_enriched": true
+  },
+  "sprint_days": ["Monday", "Tuesday", "Wednesday", "Thursday"],
+  "posting_window": {
+    "earliest": "08:30",
+    "latest": "09:30",
+    "timezone": "America/New_York"
+  },
+  "enforcement": {
+    "mode": "rolling-window",
+    "window_weeks": 4,
+    "flag_missing_after_weeks": 2,
+    "hard_block": false
+  },
+  "pillars": [
+    {
+      "id": "pillar-one",
+      "name": "Technical Deep-Dives",
+      "day": "Monday",
+      "day_index": 1,
+      "post_time": "08:30",
+      "timezone": "America/New_York",
+      "content_types": ["linkedin", "twitter-thread"],
+      "description": "Hands-on technical content — tutorials, architecture, tooling",
+      "brief_keywords": ["engineering", "architecture", "tooling", "code", "tutorial"]
+    },
+    {
+      "id": "pillar-two",
+      "name": "Industry Strategy",
+      "day": "Tuesday",
+      "day_index": 2,
+      "post_time": "08:30",
+      "timezone": "America/New_York",
+      "content_types": ["linkedin", "twitter-thread"],
+      "description": "Industry trends, market analysis, strategic takes",
+      "brief_keywords": ["strategy", "market", "trends", "industry", "analysis"]
+    },
+    {
+      "id": "pillar-three",
+      "name": "Career & Leadership",
+      "day": "Wednesday",
+      "day_index": 3,
+      "post_time": "08:30",
+      "timezone": "America/New_York",
+      "content_types": ["linkedin", "twitter-thread"],
+      "description": "Career growth, leadership lessons, professional development",
+      "brief_keywords": ["career", "leadership", "hiring", "management", "growth"]
+    },
+    {
+      "id": "pillar-four",
+      "name": "Long-Form Essays",
+      "day": "Thursday",
+      "day_index": 4,
+      "post_time": "09:00",
+      "timezone": "America/New_York",
+      "content_types": ["substack", "linkedin", "twitter-thread"],
+      "description": "Long-form essays and newsletter content",
+      "brief_keywords": ["essay", "analysis", "opinion", "deep-dive"]
+    }
+  ]
+}

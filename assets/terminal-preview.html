@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GCD Terminal Preview</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0d0d1a;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 40px;
+  }
+
+  .terminal {
+    width: 760px;
+    background: #1a1a2e;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow:
+      0 20px 60px rgba(0, 0, 0, 0.5),
+      0 0 0 1px rgba(255, 255, 255, 0.05);
+  }
+
+  .title-bar {
+    background: #2d2d3d;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    padding: 0 14px;
+    gap: 8px;
+    position: relative;
+  }
+
+  .title-bar-text {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+    font-size: 13px;
+    color: #8888a0;
+    letter-spacing: 0.02em;
+  }
+
+  .dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+  }
+  .dot.red    { background: #ff5f57; }
+  .dot.yellow { background: #febc2e; }
+  .dot.green  { background: #28c840; }
+
+  .body {
+    padding: 20px 24px 28px;
+    font-family: "SF Mono", "Menlo", "Monaco", "Cascadia Code", "Consolas", monospace;
+    font-size: 13.5px;
+    line-height: 1.65;
+    color: #e0e0e0;
+  }
+
+  .prompt {
+    color: #a78bfa;
+  }
+
+  .command {
+    color: #f0f0f0;
+    font-weight: 600;
+  }
+
+  .claude-prompt {
+    color: #60a5fa;
+  }
+
+  .muted {
+    color: #6b7280;
+  }
+
+  .heading {
+    color: #c4b5fd;
+    font-weight: 600;
+  }
+
+  .success {
+    color: #4ade80;
+  }
+
+  .status-val {
+    color: #f59e0b;
+  }
+
+  .pillar-label {
+    color: #94a3b8;
+  }
+
+  .bar-filled {
+    color: #818cf8;
+  }
+
+  .bar-empty {
+    color: #374151;
+  }
+
+  .bar-count {
+    color: #9ca3af;
+  }
+
+  .table-border {
+    color: #374151;
+  }
+
+  .table-header {
+    color: #a78bfa;
+    font-weight: 600;
+  }
+
+  .table-cell {
+    color: #e0e0e0;
+  }
+
+  .status-published {
+    color: #4ade80;
+  }
+
+  .status-reviewed {
+    color: #60a5fa;
+  }
+
+  .status-draft {
+    color: #f59e0b;
+  }
+
+  .status-stub {
+    color: #6b7280;
+  }
+
+  .glow {
+    text-shadow: 0 0 6px rgba(160, 140, 255, 0.15);
+  }
+
+  .section {
+    margin-top: 16px;
+  }
+
+  .section-gap {
+    margin-top: 24px;
+  }
+
+  .line {
+    white-space: pre;
+  }
+</style>
+</head>
+<body>
+
+<div class="terminal">
+  <div class="title-bar">
+    <div class="dot red"></div>
+    <div class="dot yellow"></div>
+    <div class="dot green"></div>
+    <div class="title-bar-text">claude &mdash; gcd</div>
+  </div>
+  <div class="body glow">
+
+    <!-- Initial prompt -->
+    <div class="line"><span class="prompt">$</span> <span class="command">claude</span></div>
+    <div class="line"><span class="claude-prompt">&gt;</span> <span class="command">/gcd:status</span></div>
+
+    <!-- Status output -->
+    <div class="section">
+      <div class="line"><span class="heading">Sprint 2026-W10</span> <span class="muted">&mdash;</span> 4 pieces planned, 2 published, 1 in review</div>
+    </div>
+
+    <div class="section">
+      <div class="line">  <span class="muted">Pillar Coverage (4-week rolling)</span></div>
+      <div class="line">  <span class="table-border">&#9500;&#9472;&#9472;</span> <span class="pillar-label">Builder-Operator</span>    <span class="bar-filled">&#9608;&#9608;&#9608;&#9608;&#9608;&#9608;&#9608;&#9608;</span><span class="bar-empty">&#9608;&#9608;</span>  <span class="bar-count">3 posts</span></div>
+      <div class="line">  <span class="table-border">&#9500;&#9472;&#9472;</span> <span class="pillar-label">AI-Tools</span>            <span class="bar-filled">&#9608;&#9608;&#9608;&#9608;&#9608;&#9608;&#9608;&#9608;&#9608;&#9608;</span>  <span class="bar-count">4 posts</span></div>
+      <div class="line">  <span class="table-border">&#9500;&#9472;&#9472;</span> <span class="pillar-label">Leadership</span>          <span class="bar-filled">&#9608;&#9608;&#9608;&#9608;</span><span class="bar-empty">&#9608;&#9608;&#9608;&#9608;&#9608;&#9608;</span>  <span class="bar-count">2 posts</span></div>
+      <div class="line">  <span class="table-border">&#9492;&#9472;&#9472;</span> <span class="pillar-label">Career-Narrative</span>    <span class="bar-filled">&#9608;&#9608;&#9608;&#9608;&#9608;&#9608;</span><span class="bar-empty">&#9608;&#9608;&#9608;&#9608;</span>  <span class="bar-count">2 posts</span></div>
+    </div>
+
+    <!-- Pipeline table -->
+    <div class="section">
+      <div class="line">  <span class="muted">Pipeline</span></div>
+      <div class="line"><span class="table-border">  &#9484;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9516;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9516;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9516;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9488;</span></div>
+      <div class="line"><span class="table-border">  &#9474;</span> <span class="table-header">Piece          </span> <span class="table-border">&#9474;</span> <span class="table-header">Status   </span> <span class="table-border">&#9474;</span> <span class="table-header">Pillar     </span> <span class="table-border">&#9474;</span> <span class="table-header">Date     </span> <span class="table-border">&#9474;</span></div>
+      <div class="line"><span class="table-border">  &#9500;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9532;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9532;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9532;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9524;</span></div>
+      <div class="line"><span class="table-border">  &#9474;</span> <span class="table-cell">agent-os-launch</span> <span class="table-border">&#9474;</span> <span class="status-published">published</span> <span class="table-border">&#9474;</span> <span class="table-cell">AI-Tools  </span> <span class="table-border">&#9474;</span> <span class="table-cell">Mar 04  </span> <span class="table-border">&#9474;</span></div>
+      <div class="line"><span class="table-border">  &#9474;</span> <span class="table-cell">hiring-signals </span> <span class="table-border">&#9474;</span> <span class="status-reviewed">reviewed </span> <span class="table-border">&#9474;</span> <span class="table-cell">Leadership</span> <span class="table-border">&#9474;</span> <span class="table-cell">Mar 05  </span> <span class="table-border">&#9474;</span></div>
+      <div class="line"><span class="table-border">  &#9474;</span> <span class="table-cell">build-vs-buy  </span> <span class="table-border">&#9474;</span> <span class="status-draft">draft    </span> <span class="table-border">&#9474;</span> <span class="table-cell">Builder-Op</span> <span class="table-border">&#9474;</span> <span class="table-cell">Mar 06  </span> <span class="table-border">&#9474;</span></div>
+      <div class="line"><span class="table-border">  &#9474;</span> <span class="table-cell">chief-network </span> <span class="table-border">&#9474;</span> <span class="status-stub">stub     </span> <span class="table-border">&#9474;</span> <span class="table-cell">Career-Nar</span> <span class="table-border">&#9474;</span> <span class="table-cell">Mar 07  </span> <span class="table-border">&#9474;</span></div>
+      <div class="line"><span class="table-border">  &#9492;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9524;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9524;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9524;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9496;</span></div>
+    </div>
+
+    <!-- Produce command -->
+    <div class="section-gap">
+      <div class="line"><span class="claude-prompt">&gt;</span> <span class="command">/gcd:produce hiring-signals</span></div>
+    </div>
+
+    <div class="section">
+      <div class="line">  Route: <span class="status-val">linkedin</span></div>
+      <div class="line">  Loading voice guide... <span class="success">done</span></div>
+      <div class="line">  Drafting... <span class="success">done</span></div>
+      <div class="line">  Status: <span class="status-stub">stub</span> <span class="muted">&#8594;</span> <span class="status-draft">draft</span></div>
+    </div>
+
+    <!-- Review command -->
+    <div class="section-gap">
+      <div class="line"><span class="claude-prompt">&gt;</span> <span class="command">/gcd:review hiring-signals</span></div>
+    </div>
+
+    <div class="section">
+      <div class="line">  Editor-in-chief reviewing...</div>
+      <div class="line">  <span class="success">&#10003;</span> Voice alignment: <span class="status-val">94%</span></div>
+      <div class="line">  <span class="success">&#10003;</span> Structure: <span class="muted">hook &#8594; insight &#8594; CTA</span></div>
+      <div class="line">  <span class="success">&#10003;</span> SEO: <span class="status-val">3 keywords matched</span></div>
+      <div class="line">  Decision: <span class="success">pass</span></div>
+      <div class="line">  Status: <span class="status-draft">draft</span> <span class="muted">&#8594;</span> <span class="status-reviewed">reviewed</span></div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>
