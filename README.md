@@ -4,8 +4,11 @@
 
 **Sprint planning, two-gate quality, and performance feedback loops for content — powered by Claude Code skills.**
 
-[![License](https://img.shields.io/badge/License-MIT-0A66C2?style=for-the-badge)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude_Code-Skills-cc785c?style=for-the-badge&logo=anthropic&logoColor=white)](https://docs.anthropic.com/en/docs/claude-code)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Rebecca%20Rae%20Barton-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white)](https://linkedin.com/in/rebeccaraebarton)
+[![X](https://img.shields.io/badge/X-@rebeccarae-000000?style=for-the-badge&logo=x&logoColor=white)](https://x.com/rebeccarae)
+[![GitHub stars](https://img.shields.io/github/stars/thatrebeccarae/gcd?style=for-the-badge&logo=github&color=181717)](https://github.com/thatrebeccarae/gcd/stargazers)
+[![License](https://img.shields.io/badge/License-MIT-0A66C2?style=for-the-badge)](LICENSE)
 
 <br>
 
@@ -218,16 +221,8 @@ GCD was directly inspired by [Get Shit Done (GSD)](https://github.com/gsd-build/
 
 Issues and PRs welcome. If you're adapting GCD for a different content workflow, I'd genuinely like to hear about it.
 
+An active project and open-sourced as-is. Use it, adapt it, break it apart for pieces.
+
 ## License
 
 [MIT](LICENSE)
-
-<div align="center">
-
----
-
-**Built by [Rebecca Rae Barton](https://github.com/thatrebeccarae)**
-
-Give your content the same rigor your code gets.
-
-</div>
