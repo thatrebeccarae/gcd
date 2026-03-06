@@ -1,7 +1,5 @@
 <div align="center">
 
-<img src="assets/terminal-preview.png" alt="GCD Terminal Preview" width="760">
-
 # Get Content Done
 
 **GCD — a skill-based content production framework for Claude Code.**
@@ -12,9 +10,18 @@ Sprint planning. Autonomous drafting. Two-gate quality. Full automation stack.
 [![License](https://img.shields.io/badge/License-MIT-0A66C2?style=for-the-badge)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude_Code-Skills-cc785c?style=for-the-badge&logo=anthropic&logoColor=white)](https://docs.anthropic.com/en/docs/claude-code)
 
+<br>
+
 ```bash
 git clone https://github.com/thatrebeccarae/gcd.git
 ```
+
+<br>
+
+<img src="assets/terminal-preview.png" alt="GCD Terminal Preview" width="760">
+
+<br>
+<br>
 
 [Why I Built This](#why-i-built-this) · [Who This Is For](#who-this-is-for) · [The Full Stack](#the-full-stack) · [Skills](#skills) · [Agents](#agents) · [Automations](#automations) · [Getting Started](#getting-started) · [How It Works](#how-it-works) · [License](#license)
 
