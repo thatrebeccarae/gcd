@@ -1,0 +1,3 @@
+# Mark HTML preview assets as documentation so GitHub linguist
+# doesn't classify the repo as an HTML project
+assets/*.html linguist-documentation

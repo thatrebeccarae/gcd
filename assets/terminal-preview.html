@@ -13,17 +13,17 @@
     justify-content: center;
     align-items: center;
     min-height: 100vh;
-    padding: 40px;
+    padding: 40px 20px;
   }
 
   .terminal {
     width: 760px;
-    background: #1a1a2e;
+    background: #1a1b2e;
     border-radius: 10px;
-    overflow: hidden;
     box-shadow:
       0 20px 60px rgba(0, 0, 0, 0.5),
       0 0 0 1px rgba(255, 255, 255, 0.05);
+    overflow: hidden;
   }
 
   .title-bar {
@@ -32,18 +32,12 @@
     display: flex;
     align-items: center;
     padding: 0 14px;
-    gap: 8px;
     position: relative;
   }
 
-  .title-bar-text {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-    font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
-    font-size: 13px;
-    color: #8888a0;
-    letter-spacing: 0.02em;
+  .dots {
+    display: flex;
+    gap: 8px;
   }
 
   .dot {
@@ -51,107 +45,68 @@
     height: 12px;
     border-radius: 50%;
   }
+
   .dot.red    { background: #ff5f57; }
   .dot.yellow { background: #febc2e; }
   .dot.green  { background: #28c840; }
 
-  .body {
+  .title-text {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #8888a0;
+    font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+
+  .content {
     padding: 20px 24px 28px;
     font-family: "SF Mono", "Menlo", "Monaco", "Cascadia Code", "Consolas", monospace;
     font-size: 13.5px;
     line-height: 1.65;
-    color: #e0e0e0;
-  }
-
-  .prompt {
-    color: #a78bfa;
-  }
-
-  .command {
-    color: #f0f0f0;
-    font-weight: 600;
-  }
-
-  .claude-prompt {
-    color: #60a5fa;
-  }
-
-  .muted {
-    color: #6b7280;
-  }
-
-  .heading {
-    color: #c4b5fd;
-    font-weight: 600;
-  }
-
-  .success {
-    color: #4ade80;
-  }
-
-  .status-val {
-    color: #f59e0b;
-  }
-
-  .pillar-label {
-    color: #94a3b8;
-  }
-
-  .bar-filled {
-    color: #818cf8;
-  }
-
-  .bar-empty {
-    color: #374151;
-  }
-
-  .bar-count {
-    color: #9ca3af;
-  }
-
-  .table-border {
-    color: #374151;
-  }
-
-  .table-header {
-    color: #a78bfa;
-    font-weight: 600;
-  }
-
-  .table-cell {
-    color: #e0e0e0;
-  }
-
-  .status-published {
-    color: #4ade80;
-  }
-
-  .status-reviewed {
-    color: #60a5fa;
-  }
-
-  .status-draft {
-    color: #f59e0b;
-  }
-
-  .status-stub {
-    color: #6b7280;
-  }
-
-  .glow {
     text-shadow: 0 0 6px rgba(160, 140, 255, 0.15);
-  }
-
-  .section {
-    margin-top: 16px;
-  }
-
-  .section-gap {
-    margin-top: 24px;
   }
 
   .line {
     white-space: pre;
+  }
+
+  .prompt   { color: #e4a0c0; }
+  .command  { color: #f0f0f0; font-weight: bold; }
+  .claude-prompt { color: #89b4fa; }
+  .teal     { color: #5de4c7; }
+  .muted    { color: #6b7280; }
+  .light    { color: #c0c0c0; }
+  .green    { color: #5de4c7; }
+  .blue     { color: #89b4fa; }
+  .amber    { color: #FFBB00; }
+  .white    { color: #f0f0f0; }
+
+  .ascii-art {
+    color: #5de4c7;
+    line-height: 1.15;
+    margin: 14px 0 10px;
+    font-size: 13.5px;
+  }
+
+  .spacer    { height: 12px; }
+  .spacer-sm { height: 6px; }
+  .spacer-lg { height: 20px; }
+
+  .cursor {
+    display: inline-block;
+    background: #f0f0f0;
+    width: 8px;
+    height: 16px;
+    vertical-align: text-bottom;
+    animation: blink 1s step-end infinite;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0; }
   }
 </style>
 </head>
@@ -159,68 +114,70 @@
 
 <div class="terminal">
   <div class="title-bar">
-    <div class="dot red"></div>
-    <div class="dot yellow"></div>
-    <div class="dot green"></div>
-    <div class="title-bar-text">claude &mdash; gcd</div>
+    <div class="dots">
+      <div class="dot red"></div>
+      <div class="dot yellow"></div>
+      <div class="dot green"></div>
+    </div>
+    <span class="title-text">Terminal</span>
   </div>
-  <div class="body glow">
 
-    <!-- Initial prompt -->
-    <div class="line"><span class="prompt">$</span> <span class="command">claude</span></div>
+  <div class="content">
+
+    <!-- Prompt -->
+    <div class="line"><span class="prompt">~ $</span> <span class="command">claude</span></div>
     <div class="line"><span class="claude-prompt">&gt;</span> <span class="command">/gcd:status</span></div>
 
-    <!-- Status output -->
-    <div class="section">
-      <div class="line"><span class="heading">Sprint 2026-W10</span> <span class="muted">&mdash;</span> 4 pieces planned, 2 published, 1 in review</div>
-    </div>
+    <div class="spacer"></div>
 
-    <div class="section">
-      <div class="line">  <span class="muted">Pillar Coverage (4-week rolling)</span></div>
-      <div class="line">  <span class="table-border">&#9500;&#9472;&#9472;</span> <span class="pillar-label">Builder-Operator</span>    <span class="bar-filled">&#9608;&#9608;&#9608;&#9608;&#9608;&#9608;&#9608;&#9608;</span><span class="bar-empty">&#9608;&#9608;</span>  <span class="bar-count">3 posts</span></div>
-      <div class="line">  <span class="table-border">&#9500;&#9472;&#9472;</span> <span class="pillar-label">AI-Tools</span>            <span class="bar-filled">&#9608;&#9608;&#9608;&#9608;&#9608;&#9608;&#9608;&#9608;&#9608;&#9608;</span>  <span class="bar-count">4 posts</span></div>
-      <div class="line">  <span class="table-border">&#9500;&#9472;&#9472;</span> <span class="pillar-label">Leadership</span>          <span class="bar-filled">&#9608;&#9608;&#9608;&#9608;</span><span class="bar-empty">&#9608;&#9608;&#9608;&#9608;&#9608;&#9608;</span>  <span class="bar-count">2 posts</span></div>
-      <div class="line">  <span class="table-border">&#9492;&#9472;&#9472;</span> <span class="pillar-label">Career-Narrative</span>    <span class="bar-filled">&#9608;&#9608;&#9608;&#9608;&#9608;&#9608;</span><span class="bar-empty">&#9608;&#9608;&#9608;&#9608;</span>  <span class="bar-count">2 posts</span></div>
-    </div>
+    <!-- ASCII Art Logo -->
+<pre class="ascii-art">  ██████╗  ██████╗ ██████╗
+ ██╔════╝ ██╔════╝ ██╔══██╗
+ ██║  ███╗██║      ██║  ██║
+ ██║   ██║██║      ██║  ██║
+ ╚██████╔╝╚██████╗ ██████╔╝
+  ╚═════╝  ╚═════╝ ╚═════╝</pre>
 
-    <!-- Pipeline table -->
-    <div class="section">
-      <div class="line">  <span class="muted">Pipeline</span></div>
-      <div class="line"><span class="table-border">  &#9484;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9516;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9516;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9516;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9488;</span></div>
-      <div class="line"><span class="table-border">  &#9474;</span> <span class="table-header">Piece          </span> <span class="table-border">&#9474;</span> <span class="table-header">Status   </span> <span class="table-border">&#9474;</span> <span class="table-header">Pillar     </span> <span class="table-border">&#9474;</span> <span class="table-header">Date     </span> <span class="table-border">&#9474;</span></div>
-      <div class="line"><span class="table-border">  &#9500;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9532;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9532;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9532;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9524;</span></div>
-      <div class="line"><span class="table-border">  &#9474;</span> <span class="table-cell">agent-os-launch</span> <span class="table-border">&#9474;</span> <span class="status-published">published</span> <span class="table-border">&#9474;</span> <span class="table-cell">AI-Tools  </span> <span class="table-border">&#9474;</span> <span class="table-cell">Mar 04  </span> <span class="table-border">&#9474;</span></div>
-      <div class="line"><span class="table-border">  &#9474;</span> <span class="table-cell">hiring-signals </span> <span class="table-border">&#9474;</span> <span class="status-reviewed">reviewed </span> <span class="table-border">&#9474;</span> <span class="table-cell">Leadership</span> <span class="table-border">&#9474;</span> <span class="table-cell">Mar 05  </span> <span class="table-border">&#9474;</span></div>
-      <div class="line"><span class="table-border">  &#9474;</span> <span class="table-cell">build-vs-buy  </span> <span class="table-border">&#9474;</span> <span class="status-draft">draft    </span> <span class="table-border">&#9474;</span> <span class="table-cell">Builder-Op</span> <span class="table-border">&#9474;</span> <span class="table-cell">Mar 06  </span> <span class="table-border">&#9474;</span></div>
-      <div class="line"><span class="table-border">  &#9474;</span> <span class="table-cell">chief-network </span> <span class="table-border">&#9474;</span> <span class="status-stub">stub     </span> <span class="table-border">&#9474;</span> <span class="table-cell">Career-Nar</span> <span class="table-border">&#9474;</span> <span class="table-cell">Mar 07  </span> <span class="table-border">&#9474;</span></div>
-      <div class="line"><span class="table-border">  &#9492;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9524;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9524;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9524;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9496;</span></div>
-    </div>
+    <div class="spacer-sm"></div>
 
-    <!-- Produce command -->
-    <div class="section-gap">
-      <div class="line"><span class="claude-prompt">&gt;</span> <span class="command">/gcd:produce hiring-signals</span></div>
-    </div>
+    <!-- Version & Description -->
+    <div class="line"><span class="muted">Get Content Done v1.2</span></div>
+    <div class="line"><span class="light">A skill-based content production framework</span></div>
+    <div class="line"><span class="light">for Claude Code.</span></div>
 
-    <div class="section">
-      <div class="line">  Route: <span class="status-val">linkedin</span></div>
-      <div class="line">  Loading voice guide... <span class="success">done</span></div>
-      <div class="line">  Drafting... <span class="success">done</span></div>
-      <div class="line">  Status: <span class="status-stub">stub</span> <span class="muted">&#8594;</span> <span class="status-draft">draft</span></div>
-    </div>
+    <div class="spacer-lg"></div>
 
-    <!-- Review command -->
-    <div class="section-gap">
-      <div class="line"><span class="claude-prompt">&gt;</span> <span class="command">/gcd:review hiring-signals</span></div>
-    </div>
+    <!-- Sprint Status -->
+    <div class="line"><span class="white">Sprint 2026-W10</span> <span class="muted">&mdash;</span> <span class="white">4/4 pillars assigned</span></div>
+    <div class="spacer-sm"></div>
+    <div class="line">  <span class="green">&#10003;</span> <span class="muted">W10-01</span>  <span class="light">Product Launches</span>         <span class="green">published</span>   <span class="muted">Mon</span></div>
+    <div class="line">  <span class="green">&#10003;</span> <span class="muted">W10-02</span>  <span class="light">Founder Stories</span>          <span class="blue">reviewed</span>    <span class="muted">Tue</span></div>
+    <div class="line">  <span class="amber">&#9679;</span> <span class="muted">W10-03</span>  <span class="light">Engineering Culture</span>      <span class="amber">draft</span>       <span class="muted">Wed</span></div>
+    <div class="line">  <span class="muted">&#9675;</span> <span class="muted">W10-04</span>  <span class="light">Weekly Roundup</span>           <span class="muted">stub</span>        <span class="muted">Thu</span></div>
 
-    <div class="section">
-      <div class="line">  Editor-in-chief reviewing...</div>
-      <div class="line">  <span class="success">&#10003;</span> Voice alignment: <span class="status-val">94%</span></div>
-      <div class="line">  <span class="success">&#10003;</span> Structure: <span class="muted">hook &#8594; insight &#8594; CTA</span></div>
-      <div class="line">  <span class="success">&#10003;</span> SEO: <span class="status-val">3 keywords matched</span></div>
-      <div class="line">  Decision: <span class="success">pass</span></div>
-      <div class="line">  Status: <span class="status-draft">draft</span> <span class="muted">&#8594;</span> <span class="status-reviewed">reviewed</span></div>
-    </div>
+    <div class="spacer-lg"></div>
+
+    <!-- Produce Command -->
+    <div class="line"><span class="claude-prompt">&gt;</span> <span class="command">/gcd:produce W10-03</span></div>
+    <div class="line">  <span class="muted">Route:</span> <span class="light">linkedin</span></div>
+    <div class="line">  <span class="muted">Loading voice guide...</span> <span class="green">done</span></div>
+    <div class="line">  <span class="muted">Drafting...</span> <span class="green">done</span></div>
+    <div class="line">  <span class="muted">Status:</span> <span class="amber">stub</span> <span class="muted">&rarr;</span> <span class="amber">draft</span></div>
+
+    <div class="spacer-lg"></div>
+
+    <!-- Review Command -->
+    <div class="line"><span class="claude-prompt">&gt;</span> <span class="command">/gcd:review W10-03</span></div>
+    <div class="line">  <span class="muted">Editor-in-chief reviewing...</span></div>
+    <div class="line">  <span class="green">&#10003;</span> <span class="light">Hook grade:</span> <span class="green">A</span></div>
+    <div class="line">  <span class="green">&#10003;</span> <span class="light">Voice alignment:</span> <span class="green">94%</span></div>
+    <div class="line">  <span class="green">&#10003;</span> <span class="light">Decision:</span> <span class="green">pass</span></div>
+    <div class="line">  <span class="muted">Status:</span> <span class="amber">draft</span> <span class="muted">&rarr;</span> <span class="blue">reviewed</span></div>
+
+    <div class="spacer-lg"></div>
+
+    <!-- Final cursor -->
+    <div class="line"><span class="prompt">~ $</span> <span class="cursor"></span></div>
 
   </div>
 </div>

@@ -77,47 +77,47 @@ cat > "${TARGET_DIR}/.planning/pillars.example.json" << 'PILLARS_EOF'
   "pillars": [
     {
       "id": "pillar-one",
-      "name": "Technical Deep-Dives",
+      "name": "Product Launches",
       "day": "Monday",
       "day_index": 1,
       "post_time": "08:30",
       "timezone": "America/New_York",
       "content_types": ["linkedin", "twitter-thread"],
-      "description": "Hands-on technical content — tutorials, architecture, tooling",
-      "brief_keywords": ["engineering", "architecture", "tooling", "code", "tutorial"]
+      "description": "New product announcements, feature spotlights, launch stories",
+      "brief_keywords": ["launch", "product", "feature", "release", "announcement"]
     },
     {
       "id": "pillar-two",
-      "name": "Industry Strategy",
+      "name": "Founder Stories",
       "day": "Tuesday",
       "day_index": 2,
       "post_time": "08:30",
       "timezone": "America/New_York",
       "content_types": ["linkedin", "twitter-thread"],
-      "description": "Industry trends, market analysis, strategic takes",
-      "brief_keywords": ["strategy", "market", "trends", "industry", "analysis"]
+      "description": "Founder journey, lessons learned, behind-the-scenes",
+      "brief_keywords": ["founder", "startup", "lessons", "journey", "story"]
     },
     {
       "id": "pillar-three",
-      "name": "Career & Leadership",
+      "name": "Engineering Culture",
       "day": "Wednesday",
       "day_index": 3,
       "post_time": "08:30",
       "timezone": "America/New_York",
       "content_types": ["linkedin", "twitter-thread"],
-      "description": "Career growth, leadership lessons, professional development",
-      "brief_keywords": ["career", "leadership", "hiring", "management", "growth"]
+      "description": "Team practices, hiring philosophy, engineering values",
+      "brief_keywords": ["engineering", "culture", "hiring", "team", "practices"]
     },
     {
       "id": "pillar-four",
-      "name": "Long-Form Essays",
+      "name": "Weekly Roundup",
       "day": "Thursday",
       "day_index": 4,
       "post_time": "09:00",
       "timezone": "America/New_York",
       "content_types": ["substack", "linkedin", "twitter-thread"],
-      "description": "Long-form essays and newsletter content",
-      "brief_keywords": ["essay", "analysis", "opinion", "deep-dive"]
+      "description": "Curated weekly digest and newsletter content",
+      "brief_keywords": ["roundup", "digest", "newsletter", "weekly", "curated"]
     }
   ]
 }
