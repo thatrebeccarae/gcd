@@ -2,11 +2,8 @@
 
 # Get Content Done
 
-**GCD — a skill-based content production framework for Claude Code.**
+**Sprint planning, two-gate quality, and performance feedback loops for content — powered by Claude Code skills.**
 
-Sprint planning. Autonomous drafting. Two-gate quality. Full automation stack.
-
-[![GitHub stars](https://img.shields.io/github/stars/thatrebeccarae/gcd?style=for-the-badge&logo=github&color=181717)](https://github.com/thatrebeccarae/gcd/stargazers)
 [![License](https://img.shields.io/badge/License-MIT-0A66C2?style=for-the-badge)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude_Code-Skills-cc785c?style=for-the-badge&logo=anthropic&logoColor=white)](https://docs.anthropic.com/en/docs/claude-code)
 
@@ -17,43 +14,20 @@ git clone https://github.com/thatrebeccarae/gcd.git
 ```
 
 <br>
-
-<img src="assets/terminal-preview.png" alt="GCD Terminal Preview" width="760">
-
-<br>
 <br>
 
-[Why I Built This](#why-i-built-this) · [Who This Is For](#who-this-is-for) · [The Full Stack](#the-full-stack) · [Skills](#skills) · [Agents](#agents) · [Automations](#automations) · [Getting Started](#getting-started) · [How It Works](#how-it-works) · [License](#license)
+[What It Does](#what-it-does) · [Skills](#skills) · [Agents](#agents) · [How It Works](#how-it-works) · [Getting Started](#getting-started) · [Extending GCD](#extending-gcd) · [Credits](#credits)
 
 </div>
 
 ---
 
-## Why I Built This
+## What It Does
 
-Content production has a process problem. Every week I was staring at a pile of signal briefs, half-drafted LinkedIn posts, and a vague sense that I hadn't talked about one of my pillars in three weeks. The work itself wasn't hard — the orchestration was. Deciding what to write, in what order, against which pillar, and then actually pushing each piece through drafting, review, and approval before the week ran out.
-
-Code projects solved this decades ago with sprint planning, CI gates, and retros. Content deserves the same rigor. GCD gives weekly content sprints a structured lifecycle — plan, produce, review, approve, retro — using Claude Code skills and specialized agents so I can focus on the writing instead of the bookkeeping.
-
-Then I automated the inputs. RSS feeds get scanned daily for content signals. Briefs are auto-generated and scored. A morning pipeline runs before I wake up so the queue is ready when I sit down. Weekly retros analyze what performed and feed that data back into the next sprint's scoring. Voice drift is tracked by comparing AI drafts against my published edits.
-
-The result is a system where YAML frontmatter is the single source of truth, every piece of content has a clear state, nothing slips through the cracks, and the system learns from what works.
-
-## Who This Is For
-
-- **Solo content operators** who publish on a regular cadence and want sprint-style structure without a project manager
-- **Builder-marketers** already using Claude Code who want to extend it into content workflows
-- **Anyone drowning in drafts** who needs a clear pipeline from signal to published post with quality gates along the way
-
-## The Full Stack
-
-GCD is three layers working together:
+GCD applies sprint methodology to content production. You define your content pillars, feed in signal briefs, and run a weekly cycle: **plan → produce → review → approve → retro**. Each step is a Claude Code slash command. Each piece of content tracks its own state in YAML frontmatter. Nothing moves directories. Nothing slips through the cracks.
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│  AUTOMATIONS          Daily pipeline, retros,       │
-│                       voice learning, metrics sync  │
-├─────────────────────────────────────────────────────┤
 │  SKILLS + AGENTS      Sprint planning, drafting,    │
 │                       review gates, retrospectives  │
 ├─────────────────────────────────────────────────────┤
@@ -62,17 +36,15 @@ GCD is three layers working together:
 └─────────────────────────────────────────────────────┘
 ```
 
-**State layer** — `pillars.json` defines your content pillars, posting schedule, and quality gates. YAML frontmatter on every content file tracks lifecycle status. Files never move directories; status lives in frontmatter only.
+**State layer** — `pillars.json` defines your content pillars, posting schedule, and quality gates. YAML frontmatter on every content file tracks lifecycle status. Files never move; status lives in frontmatter only.
 
 **Skills + agents** — 10 Claude Code skills orchestrate the workflow. 7 specialized agents handle scoring, drafting, review, research, and analytics. You interact through slash commands; agents do the heavy lifting behind each one.
-
-**Automations** — A morning pipeline, weekly retrospectives, voice drift analysis, and metrics sync run on schedule. The pipeline produces scored briefs before you wake up; retros analyze performance and feed insights back into sprint planning.
 
 ## Skills
 
 | Skill | Function |
 |-------|----------|
-| `/gcd:status` | Sprint dashboard — pieces, pillar coverage, strategy drift, velocity trends, bottleneck detection |
+| `/gcd:status` | Sprint dashboard — pieces, pillar coverage, velocity trends, bottleneck detection |
 | `/gcd:queue` | Signal brief queue with composite scoring and pillar-fit suggestions |
 | `/gcd:plan-sprint` | Interactive sprint planning with agent-scored recommendations and pillar enforcement |
 | `/gcd:produce` | Route-dispatched content drafting (LinkedIn, Substack essay, Twitter/X thread, newsletter) |
@@ -95,83 +67,11 @@ GCD is three layers working together:
 | `gcd-metrics-analyst` | Pipeline analytics — throughput rates, gate performance, route comparison, high/low performer identification |
 | `gcd-strategy-auditor` | Strategy health — rolling-window pillar drift detection, 3-sprint velocity trends, pipeline bottleneck identification |
 
-## Automations
-
-The automation layer runs on a separate machine (headless Mac Mini) and feeds the GCD pipeline autonomously.
-
-### Morning Pipeline
-
-Runs daily at 6:30 AM via LaunchAgent. Scans RSS feeds (via Miniflux) for content signals, scores them against pillars, generates brief stubs for high-signal topics, and logs the run. By the time you sit down, the brief queue is populated and scored.
-
-### Auto-Retro
-
-Runs weekly. Scans the sprint for pieces that reached `published` or `measured` status, pulls engagement metrics, analyzes performance patterns, and writes a structured retrospective. Detects unmatched posts (metrics without content files), looks up post text in LinkedIn data exports, and creates stub files for tracking.
-
-### Voice Drift Analysis
-
-Runs weekly. Compares `.draft.md` files (the AI's original output) against their published siblings (the human-edited version) to detect systematic voice drift. Builds a living `voice-drift.md` document with patterns like "AI over-explains," "human cuts preamble," etc. Also runs an anti-pattern pass on rejected drafts to extract NEVER rules.
-
-### Weekly Report
-
-Runs after auto-retro. Generates a structured weekly report with pipeline throughput, engagement trends, pillar coverage analysis, and velocity metrics. Feeds into the next sprint planning cycle.
-
-### LinkedIn Export Watcher
-
-Runs on the local machine. Watches `~/Downloads/` for LinkedIn data exports, extracts to the vault, and triggers the retro + report chain on the remote machine. Bridges the gap between LinkedIn's manual export process and the automated analytics pipeline.
-
-### Metrics Integration
-
-Engagement metrics flow into frontmatter via two paths:
-- **Manual entry** during `/gcd:retro` — the human enters impressions, reactions, comments, shares
-- **Auto-fill** via LinkedIn data exports and Tampermonkey userscript — matches published posts to content files by URL and pre-populates metrics
-
-## Getting Started
-
-**Prerequisites:**
-
-- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) CLI installed and configured
-- An Obsidian vault (or any markdown-based content store)
-- Signal briefs in the vault (manually via `/seed-idea` or automated via RSS)
-
-**Install skills:**
-
-```bash
-# Clone the repo
-git clone https://github.com/thatrebeccarae/gcd.git
-
-# Copy skills to your Claude Code skills directory
-cp -r gcd/skills/* ~/.claude/skills/
-
-# Copy agents to your Claude Code agents directory
-cp -r gcd/agents/* ~/.claude/agents/
-```
-
-**Configure:**
-
-1. Copy `pillars.example.json` to your repo as `pillars.json`
-2. Edit pillar names, posting days, keywords, and content types to match your strategy
-3. Update vault paths in skill files to point to your content directories
-4. Add signal briefs to your vault's inbox
-5. Run `/gcd:plan-sprint` to kick off your first sprint
-
-<details>
-<summary><strong>Path configuration</strong></summary>
-
-Skills and agents reference three path categories that you'll need to update:
-
-| Path | Default | What it points to |
-|------|---------|-------------------|
-| Repo path | `~/your-repo/` | Where you cloned GCD (for `pillars.json`, schemas, retros) |
-| Content path | `~/your-vault/content/` | Where your content files live |
-| Brief path | `~/your-vault/briefs/` | Where signal briefs are stored |
-
-Search for these paths in the skill and agent `.md` files and replace with your actual paths.
-
-</details>
-
 ## How It Works
 
-GCD uses YAML frontmatter as the single source of truth for content state. Each piece moves through a defined lifecycle:
+### Content Lifecycle
+
+YAML frontmatter is the single source of truth. Each piece moves through a defined lifecycle:
 
 ```
 stub → draft → reviewed → approved → published → measured
@@ -183,7 +83,7 @@ stub → draft → reviewed → approved → published → measured
 
 ### Sprint Planning
 
-The `gcd-sprint-planner` agent scores signal briefs using a composite formula: keyword match (50%) + pillar fit with underrepresentation boost (30%) + route fit (20%). It loads the most recent performance summary to apply boosts to historically high-performing route+pillar combinations. A 4-week rolling window detects pillar drift — if you haven't posted about a topic in two weeks, the planner surfaces it without hard-blocking.
+The `gcd-sprint-planner` agent scores signal briefs using a composite formula: keyword match (50%) + pillar fit with underrepresentation boost (30%) + route fit (20%). Historical performance data applies boosts to high-performing route+pillar combinations (+0.1) and gentle penalties to underperformers (-0.05). A 4-week rolling window detects pillar drift — if you haven't posted about a topic in two weeks, the planner surfaces it without hard-blocking.
 
 ### Route-Dispatched Drafting
 
@@ -195,19 +95,34 @@ The `gcd-sprint-planner` agent scores signal briefs using a composite formula: k
 
 ### Two-Gate Quality
 
-The system separates concerns across two review gates:
-
 **Gate 1 (Agent):** The `gcd-reviewer` catches what machines catch well — style consistency, structural issues, hook quality grading (A/B/C/D), SEO criteria, suggested title variants. Returns pass, revise, or escalate.
 
 **Gate 2 (Human):** `/gcd:approve` catches what humans catch well — tone, judgment, relevance, "does this actually sound like me?" Neither gate alone is enough. Both together cover the full surface.
 
 ### Performance Feedback Loop
 
-`/gcd:retro` closes the sprint with pipeline metrics and engagement analysis. The `gcd-metrics-analyst` agent identifies high and low performers by route and pillar. This data feeds back into the sprint planner — next week's scoring applies a +0.1 boost to route+pillar combinations that historically outperform, and a -0.05 penalty to underperformers.
+`/gcd:retro` closes the sprint with pipeline metrics and engagement analysis. The `gcd-metrics-analyst` identifies high and low performers by route and pillar. This data feeds back into the sprint planner — next week's scoring boosts what worked and nudges away from what didn't.
 
-### Voice Learning
+<details>
+<summary><strong>Composite scoring formula</strong></summary>
 
-Every AI draft is preserved as a `.draft.md` sibling file. When the human edits and publishes the main file, the voice drift analysis compares the pair to detect systematic patterns. Over time, this builds a living document of voice rules that agents read before drafting — a feedback loop between human editing instinct and AI output.
+The sprint planner scores each brief against each pillar:
+
+```
+composite = keyword_normalized * 0.5 + pillar_fit * 0.3 + route_fit * 0.2
+```
+
+Where:
+- **keyword_normalized** (0.0-1.0): How many pillar keywords appear in the brief topic, divided by total keywords
+- **pillar_fit** (0.0-1.0): keyword_normalized + underrepresentation boost (up to +0.3 for neglected pillars) + performance boost (+0.1/-0.05 from historical data)
+- **route_fit** (0.0 or 1.0): Whether the brief's route matches the pillar's content types
+
+Visual indicators in queue view:
+- Score >= 0.6: strong signal
+- Score 0.4-0.59: borderline
+- Score < 0.4: weak signal
+
+</details>
 
 <details>
 <summary><strong>Pillar enforcement and rolling windows</strong></summary>
@@ -240,97 +155,64 @@ See [`frontmatter-spec.md`](.planning/schemas/frontmatter-spec.md) for the compl
 
 </details>
 
+## Getting Started
+
+**Prerequisites:**
+
+- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) CLI installed and configured
+- A markdown-based content store (Obsidian vault, flat files, whatever works)
+
+**Install:**
+
+```bash
+# Clone the repo
+git clone https://github.com/thatrebeccarae/gcd.git
+
+# Copy skills to your Claude Code skills directory
+cp -r gcd/skills/* ~/.claude/skills/
+
+# Copy agents to your Claude Code agents directory
+cp -r gcd/agents/* ~/.claude/agents/
+```
+
+**Configure:**
+
+1. Copy `pillars.example.json` to your repo as `pillars.json`
+2. Edit pillar names, posting days, keywords, and content types to match your strategy
+3. Update vault paths in skill files to point to your content directories
+4. Add signal briefs to your vault's inbox (manually via `/seed-idea` or from any source)
+5. Run `/gcd:plan-sprint` to kick off your first sprint
+
 <details>
-<summary><strong>Composite scoring formula</strong></summary>
+<summary><strong>Path configuration</strong></summary>
 
-The sprint planner scores each brief against each pillar:
+Skills and agents reference three path categories that you'll need to update:
 
-```
-composite = keyword_normalized * 0.5 + pillar_fit * 0.3 + route_fit * 0.2
-```
+| Path | Default | What it points to |
+|------|---------|-------------------|
+| Repo path | `~/your-repo/` | Where you cloned GCD (for `pillars.json`, schemas, retros) |
+| Content path | `~/your-vault/content/` | Where your content files live |
+| Brief path | `~/your-vault/briefs/` | Where signal briefs are stored |
 
-Where:
-- **keyword_normalized** (0.0-1.0): How many pillar keywords appear in the brief topic, divided by total keywords
-- **pillar_fit** (0.0-1.0): keyword_normalized + underrepresentation boost (up to +0.3 for neglected pillars) + performance boost (+0.1/-0.05 from historical data)
-- **route_fit** (0.0 or 1.0): Whether the brief's route matches the pillar's content types
-
-Visual indicators in queue view:
-- Score >= 0.6: strong signal
-- Score 0.4-0.59: borderline
-- Score < 0.4: weak signal
+Search for these paths in the skill and agent `.md` files and replace with your actual paths.
 
 </details>
 
-## Architecture
+## Extending GCD
 
-```
-                    ┌──────────────────┐
-                    │  Morning Pipeline │ ← RSS feeds (Miniflux)
-                    │  (daily, 6:30 AM)│
-                    └────────┬─────────┘
-                             │ briefs
-                             ▼
-┌──────────┐    ┌──────────────────────┐    ┌──────────────────┐
-│ /seed    │───▶│     Brief Queue      │◀───│ Content Signals  │
-│  -idea   │    │  (scored, filtered)  │    │ (n8n + RSS)      │
-└──────────┘    └────────┬─────────────┘    └──────────────────┘
-                         │
-                         ▼
-              ┌─────────────────────┐
-              │  /gcd:plan-sprint   │ ← gcd-sprint-planner agent
-              │  (interactive)      │    (composite scoring, drift)
-              └────────┬────────────┘
-                       │ assigns briefs to pillar slots
-                       ▼
-              ┌─────────────────────┐
-              │  /gcd:produce       │ ← gcd-producer + gcd-researcher
-              │  (route-dispatched) │    (voice guide, research)
-              └────────┬────────────┘
-                       │ .draft.md preserved
-                       ▼
-              ┌─────────────────────┐
-              │  /gcd:review        │ ← gcd-reviewer agent
-              │  Gate 1 (agent)     │    (voice, structure, SEO)
-              └────────┬────────────┘
-                       │ pass / revise / escalate
-                       ▼
-              ┌─────────────────────┐
-              │  /gcd:approve       │
-              │  Gate 2 (human)     │
-              └────────┬────────────┘
-                       │
-                       ▼
-              ┌─────────────────────┐    ┌──────────────────────┐
-              │  Published          │───▶│  /gcd:retro          │
-              │  (manual post)      │    │  (metrics, analysis) │
-              └─────────────────────┘    └────────┬─────────────┘
-                                                  │
-                       ┌──────────────────────────┘
-                       ▼
-              ┌─────────────────────┐    ┌──────────────────────┐
-              │  Performance Data   │───▶│  Voice Drift         │
-              │  (feeds next sprint)│    │  Analysis (weekly)   │
-              └─────────────────────┘    └──────────────────────┘
-```
+GCD is the skill + agent + state layer. What feeds it — and what you do after `/gcd:approve` — is up to you.
 
-## Integrations
+Some things that pair well:
+- **RSS scanning** for automated signal brief generation (Miniflux, Feedly, any reader with an API)
+- **Scheduled pipelines** that run the brief queue before you wake up (cron, LaunchAgent, n8n, whatever)
+- **Voice drift analysis** comparing AI drafts (`.draft.md`) against your published edits to build a living style guide
+- **Engagement metrics sync** from platform data exports to close the feedback loop in `/gcd:retro`
 
-| Integration | Role |
-|-------------|------|
-| **Miniflux** (self-hosted RSS) | Daily content signal scanning — RSS feeds are categorized and scanned for topic convergence, volume spikes, and engagement signals |
-| **n8n** (workflow automation) | Orchestrates the morning pipeline — triggers RSS scans, runs signal detection, generates brief stubs |
-| **Obsidian** (markdown vault) | Content store — all files live in the vault with YAML frontmatter as the state layer |
-| **LinkedIn Data Exports** | Engagement metrics source — `Shares.csv` provides post text for matching, metrics for analysis |
-| **Tampermonkey** | Browser userscript for auto-capturing LinkedIn engagement metrics from the UI |
-| **LaunchAgent** (macOS) | Schedules the morning pipeline, auto-retro, voice drift analysis, and weekly reports |
+None of these are required. GCD works with manual brief capture (`/seed-idea`) and manual metrics entry.
 
-## Version History
+## Credits
 
-| Version | Date | What shipped |
-|---------|------|-------------|
-| **v1.0** | 2026-02-22 | Foundation through retrospectives — state spec, sprint planning, route-dispatched drafting, two-gate quality, retros (Phases 1-6) |
-| **v1.1** | 2026-02-23 | Twitter/X thread route, signal scoring display, engagement metrics in retro, strategy drift + velocity tracking, performance feedback loop (Phases 7-11) |
-| **v1.2** | In progress | LinkedIn metrics auto-fill via data exports + Tampermonkey, reject skill with anti-pattern learning |
+GCD was directly inspired by [Get Shit Done (GSD)](https://github.com/gsd-build/get-shit-done), which applies sprint methodology and Claude Code skills to software engineering projects. GSD proved that skills + agents + structured state could replace heavyweight project management for solo builders. GCD takes the same philosophy — plan, execute, verify, retro — and adapts it for content production workflows.
 
 ## Contributing
 
