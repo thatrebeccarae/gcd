@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="assets/terminal-preview.png" alt="GCD Terminal Preview" width="760">
+
 # Get Content Done
 
 **GCD — a skill-based content production framework for Claude Code.**
