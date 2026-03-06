@@ -9,6 +9,7 @@
 [![X](https://img.shields.io/badge/X-@rebeccarae-000000?style=for-the-badge&logo=x&logoColor=white)](https://x.com/rebeccarae)
 [![GitHub stars](https://img.shields.io/github/stars/thatrebeccarae/gcd?style=for-the-badge&logo=github&color=181717)](https://github.com/thatrebeccarae/gcd/stargazers)
 [![License](https://img.shields.io/badge/License-MIT-0A66C2?style=for-the-badge)](LICENSE)
+[![Clone](https://img.shields.io/badge/Clone-git%20clone-f78166?style=for-the-badge&logo=git&logoColor=white)](https://github.com/thatrebeccarae/gcd)
 
 <br>
 
