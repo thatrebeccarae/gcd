@@ -26,11 +26,15 @@ git clone https://github.com/thatrebeccarae/get-content-done.git
 <br>
 <br>
 
-[What It Does](#what-it-does) · [Skills](#skills) · [Agents](#agents) · [How It Works](#how-it-works) · [Getting Started](#getting-started) · [Extending GCD](#extending-gcd) · [Credits](#credits)
+[Why I Built This](#why-i-built-this) · [What It Does](#what-it-does) · [Skills](#skills) · [Agents](#agents) · [How It Works](#how-it-works) · [Getting Started](#getting-started) · [Extending GCD](#extending-gcd) · [Credits](#credits)
 
 </div>
 
 ---
+
+## Why I Built This
+
+Content production for solo builders is either chaotic or over-engineered. You're either dumping ideas into a Google Doc and hoping you remember to post, or wrangling a Notion database with 40 columns that nobody maintains. I wanted sprint methodology applied to content -- plan, produce, review, ship, retro -- with AI handling the parts it's good at (scoring, drafting, consistency checks) and humans handling the parts it's not (voice, judgment, "does this actually sound like me?").
 
 ## What It Does
 
