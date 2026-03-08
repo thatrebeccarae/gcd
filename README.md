@@ -7,15 +7,21 @@
 [![Claude Code](https://img.shields.io/badge/Claude_Code-Skills-cc785c?style=for-the-badge&logo=anthropic&logoColor=white)](https://docs.anthropic.com/en/docs/claude-code)
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-Rebecca%20Rae%20Barton-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white)](https://linkedin.com/in/rebeccaraebarton)
 [![X](https://img.shields.io/badge/X-@rebeccarae-000000?style=for-the-badge&logo=x&logoColor=white)](https://x.com/rebeccarae)
-[![GitHub stars](https://img.shields.io/github/stars/thatrebeccarae/gcd?style=for-the-badge&logo=github&color=181717)](https://github.com/thatrebeccarae/gcd/stargazers)
+[![GitHub stars](https://img.shields.io/github/stars/thatrebeccarae/get-content-done?style=for-the-badge&logo=github&color=181717)](https://github.com/thatrebeccarae/get-content-done/stargazers)
 [![License](https://img.shields.io/badge/License-MIT-0A66C2?style=for-the-badge)](LICENSE)
-[![Clone](https://img.shields.io/badge/Clone-git%20clone-f78166?style=for-the-badge&logo=git&logoColor=white)](https://github.com/thatrebeccarae/gcd)
+[![Clone](https://img.shields.io/badge/Clone-git%20clone-f78166?style=for-the-badge&logo=git&logoColor=white)](https://github.com/thatrebeccarae/get-content-done)
 
+<br>
 <br>
 
 ```bash
-git clone https://github.com/thatrebeccarae/gcd.git
+git clone https://github.com/thatrebeccarae/get-content-done.git
 ```
+
+<br>
+<br>
+
+<img src="assets/terminal-preview.png" alt="GCD terminal install preview" width="600">
 
 <br>
 <br>
@@ -29,16 +35,6 @@ git clone https://github.com/thatrebeccarae/gcd.git
 ## What It Does
 
 GCD applies sprint methodology to content production. You define your content pillars, feed in signal briefs, and run a weekly cycle: **plan → produce → review → approve → retro**. Each step is a Claude Code slash command. Each piece of content tracks its own state in YAML frontmatter. Nothing moves directories. Nothing slips through the cracks.
-
-```
-┌─────────────────────────────────────────────────────┐
-│  SKILLS + AGENTS      Sprint planning, drafting,    │
-│                       review gates, retrospectives  │
-├─────────────────────────────────────────────────────┤
-│  STATE LAYER          YAML frontmatter, pillars     │
-│                       config, brief queue           │
-└─────────────────────────────────────────────────────┘
-```
 
 **State layer** — `pillars.json` defines your content pillars, posting schedule, and quality gates. YAML frontmatter on every content file tracks lifecycle status. Files never move; status lives in frontmatter only.
 
@@ -169,14 +165,9 @@ See [`frontmatter-spec.md`](.planning/schemas/frontmatter-spec.md) for the compl
 **Install:**
 
 ```bash
-# Clone the repo
-git clone https://github.com/thatrebeccarae/gcd.git
-
-# Copy skills to your Claude Code skills directory
-cp -r gcd/skills/* ~/.claude/skills/
-
-# Copy agents to your Claude Code agents directory
-cp -r gcd/agents/* ~/.claude/agents/
+git clone https://github.com/thatrebeccarae/get-content-done.git
+cd get-content-done
+./install.sh
 ```
 
 **Configure:**
