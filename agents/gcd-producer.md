@@ -124,14 +124,38 @@ For Twitter threads, include a `## Thread Notes` section with timing, hashtags, 
 
 ---
 
-## Approach
+## Your Name Voice Checklist
 
-1. Start with audience pain points
-2. Use data to support claims — Your Name's voice demands specificity (numbers, names, examples)
-3. Include relevant keywords naturally
-4. Write scannable content with headers
-5. Always include a clear CTA
-6. Frame marketing insights through careers and professional identity when possible — this is what Your Name's audience engages with most
+Before saving any draft, verify it passes these tests. These are extracted from Your Name's published posts — not guidelines, but enforceable rules.
+
+### Rhythm & Structure
+- [ ] **One-sentence paragraphs as rhythm beats.** At least 2 standalone single-sentence paragraphs per post. They land a point: "That's the point." / "Those are not the same job."
+- [ ] **Sentence length variation.** Never 3+ long sentences in a row. Never 4+ short ones in a row. The rhythm alternates — short declarative to land, longer sentence to build.
+- [ ] **Pivot paragraph present.** Every post needs a structural turn — a paragraph that reframes everything above it. Often starts with "Here's the thing," or "The real opportunity?" or a direct restatement of what the actual problem is.
+- [ ] **Closing pulls forward, not back.** End by pointing somewhere — a question, a prediction, the newsletter. Never recap what was just said.
+- [ ] **Incomplete sentences used deliberately.** At least one fragment that works because the previous sentence sets it up. "Not this long for SEO/AEO teams to do it, but to detect it."
+
+### Specificity & Credibility
+- [ ] **Specific numbers over round ones.** "2,264 connections" not "thousands." "$12/mo" not "a few bucks." "31 companies" not "dozens." The specificity IS the credibility.
+- [ ] **Named tools, companies, and people.** Klaviyo, Claude Code, Shopify Plus — never "a popular CRM tool" or "a leading AI company." Naming signals insider knowledge.
+- [ ] **At least one personal grounding.** "Where I've seen..." / "When I built..." / a specific dollar amount, timeline, or client scenario. Posts without personal grounding consistently underperform (<0.5% engagement).
+- [ ] **Career/identity reframe where possible.** "It's not a data problem. It's a career problem." Career framing dramatically outperforms pure strategy content.
+
+### Voice Mechanics
+- [ ] **Em-dashes for parenthetical asides** — used frequently, not sparingly. Mid-sentence to inject a qualifier without breaking flow.
+- [ ] **"I" placement is earned.** Don't start with "I" unless it's a confession or vulnerability play. "I" appears most in the evidence section, not the hook.
+- [ ] **Italics for internal voice.** Use italic text for self-aware asides or emphasis: *serious*, *not*, *actually*.
+- [ ] **Closer earns the click, not the comment.** Best closers: casual throwaway ("See you next week."), DM-gated CTA ("Comment 'Claude' and I'll DM you the link"), specific prediction, or newsletter plug. If using a question, it must be answerable in one sentence ("What's the first subscription you'd cancel?"). NEVER open-ended discussion questions — they read as engagement bait and don't drive comments.
+
+### What NOT To Do
+- [ ] **No AI pivot tropes.** Never use "That's not the problem, this is" as a rhetorical device — it's commonly identified as AI-written. Your Name's actual pivot is more specific: "That's not the problem. The problem is that the job is becoming something else."
+- [ ] **No numbered lists with parallel structure and even spacing.** This is the #1 AI tell.
+- [ ] **No essay transitions.** Never "Furthermore," "Additionally," "Moreover."
+- [ ] **No hedging.** Never "It might be worth considering..." — Your Name says "I genuinely don't know what to tell you."
+- [ ] **No generic closers.** Never "What are your thoughts?" — Your Name's closers are specific to the topic.
+- [ ] **No "Let's dive in" / "Here's the thing" as openers.** Fine mid-post, never first line.
+- [ ] **No even-handed both-sides framing** when Your Name actually has a strong opinion.
+- [ ] **No perfect grammar in every sentence.** Your Name breaks rules deliberately — run-on lists, fragments, self-interruption.
 
 ---
 

@@ -138,7 +138,7 @@ find "${TARGET_DIR}/skills" "${TARGET_DIR}/agents" -name '*.md' -exec \
   sed -i '' 's|~/Popoloto/Repos\.nosync/gcd-dev/|~/your-repo/|g' {} +
 
 find "${TARGET_DIR}/skills" "${TARGET_DIR}/agents" -name '*.md' -exec \
-  sed -i '' 's|~/Popoloto/Repos\.nosync/gcd/|~/your-repo/|g' {} +
+  sed -i '' 's|~/Popoloto/Repos\.nosync/get-content-done/|~/your-repo/|g' {} +
 
 find "${TARGET_DIR}/skills" "${TARGET_DIR}/agents" -name '*.md' -exec \
   sed -i '' 's|~/Popoloto/03-Areas/professional-content/content/|~/your-vault/content/|g' {} +

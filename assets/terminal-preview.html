@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GCD Terminal Preview</title>
+<title>Get Content Done — Install Preview</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -13,32 +13,30 @@
     justify-content: center;
     align-items: center;
     min-height: 100vh;
-    padding: 40px 20px;
+    padding: 48px 20px;
   }
 
   .terminal {
-    width: 760px;
+    width: 680px;
     background: #1a1b2e;
-    border-radius: 10px;
+    border-radius: 12px;
     box-shadow:
-      0 20px 60px rgba(0, 0, 0, 0.5),
-      0 0 0 1px rgba(255, 255, 255, 0.05);
+      0 24px 80px rgba(0, 0, 0, 0.6),
+      0 0 0 1px rgba(255, 255, 255, 0.06);
     overflow: hidden;
   }
 
   .title-bar {
-    background: #2d2d3d;
-    height: 38px;
+    background: #252638;
+    height: 40px;
     display: flex;
     align-items: center;
-    padding: 0 14px;
+    padding: 0 16px;
     position: relative;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
   }
 
-  .dots {
-    display: flex;
-    gap: 8px;
-  }
+  .dots { display: flex; gap: 8px; }
 
   .dot {
     width: 12px;
@@ -54,46 +52,30 @@
     position: absolute;
     left: 50%;
     transform: translateX(-50%);
-    color: #8888a0;
+    color: #6b6b85;
     font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
     font-size: 13px;
     font-weight: 500;
-    letter-spacing: 0.02em;
   }
 
   .content {
-    padding: 20px 24px 28px;
+    padding: 22px 26px 28px;
     font-family: "SF Mono", "Menlo", "Monaco", "Cascadia Code", "Consolas", monospace;
     font-size: 13.5px;
-    line-height: 1.65;
-    text-shadow: 0 0 6px rgba(160, 140, 255, 0.15);
+    line-height: 1.7;
   }
 
-  .line {
-    white-space: pre;
-  }
+  .line { white-space: pre; }
 
-  .prompt   { color: #e4a0c0; }
-  .command  { color: #f0f0f0; font-weight: bold; }
-  .claude-prompt { color: #89b4fa; }
-  .teal     { color: #5de4c7; }
-  .muted    { color: #6b7280; }
-  .light    { color: #c0c0c0; }
-  .green    { color: #5de4c7; }
-  .blue     { color: #89b4fa; }
-  .amber    { color: #FFBB00; }
-  .white    { color: #f0f0f0; }
-
-  .ascii-art {
-    color: #5de4c7;
-    line-height: 1.15;
-    margin: 14px 0 10px;
-    font-size: 13.5px;
-  }
+  .prompt  { color: #b48ead; }
+  .command { color: #f0f0f0; font-weight: 600; }
+  .muted   { color: #555570; }
+  .dim     { color: #6b7280; }
+  .light   { color: #c0c8d8; }
+  .green   { color: #5de4c7; }
 
   .spacer    { height: 12px; }
   .spacer-sm { height: 6px; }
-  .spacer-lg { height: 20px; }
 
   .cursor {
     display: inline-block;
@@ -124,59 +106,20 @@
 
   <div class="content">
 
-    <!-- Prompt -->
-    <div class="line"><span class="prompt">~ $</span> <span class="command">claude</span></div>
-    <div class="line"><span class="claude-prompt">&gt;</span> <span class="command">/gcd:status</span></div>
+    <div class="line"><span class="prompt">~ $</span> <span class="command">git clone https://github.com/thatrebeccarae/get-content-done.git</span></div>
+    <div class="line"><span class="dim">Cloning into 'get-content-done'...</span></div>
+    <div class="spacer-sm"></div>
 
+    <div class="line"><span class="prompt">~ $</span> <span class="command">cp -r get-content-done/skills/* ~/.claude/skills/</span></div>
+    <div class="line"><span class="prompt">~ $</span> <span class="command">cp -r get-content-done/agents/* ~/.claude/agents/</span></div>
     <div class="spacer"></div>
 
-    <!-- ASCII Art Logo -->
-<pre class="ascii-art">  ██████╗  ██████╗ ██████╗
- ██╔════╝ ██╔════╝ ██╔══██╗
- ██║  ███╗██║      ██║  ██║
- ██║   ██║██║      ██║  ██║
- ╚██████╔╝╚██████╗ ██████╔╝
-  ╚═════╝  ╚═════╝ ╚═════╝</pre>
-
+    <div class="line"><span class="prompt">~ $</span> <span class="command">claude</span></div>
+    <div class="line"><span class="muted">&gt;</span> <span class="command">/gcd:plan-sprint</span></div>
     <div class="spacer-sm"></div>
+    <div class="line"><span class="green">&#10003;</span> <span class="light">10 skills loaded</span>  <span class="muted">|</span>  <span class="light">7 agents ready</span></div>
+    <div class="spacer"></div>
 
-    <!-- Version & Description -->
-    <div class="line"><span class="muted">Get Content Done v1.2</span></div>
-    <div class="line"><span class="light">A skill-based content production framework</span></div>
-    <div class="line"><span class="light">for Claude Code.</span></div>
-
-    <div class="spacer-lg"></div>
-
-    <!-- Sprint Status -->
-    <div class="line"><span class="white">Sprint 2026-W10</span> <span class="muted">&mdash;</span> <span class="white">4/4 pillars assigned</span></div>
-    <div class="spacer-sm"></div>
-    <div class="line">  <span class="green">&#10003;</span> <span class="muted">W10-01</span>  <span class="light">Product Launches</span>         <span class="green">published</span>   <span class="muted">Mon</span></div>
-    <div class="line">  <span class="green">&#10003;</span> <span class="muted">W10-02</span>  <span class="light">Founder Stories</span>          <span class="blue">reviewed</span>    <span class="muted">Tue</span></div>
-    <div class="line">  <span class="amber">&#9679;</span> <span class="muted">W10-03</span>  <span class="light">Engineering Culture</span>      <span class="amber">draft</span>       <span class="muted">Wed</span></div>
-    <div class="line">  <span class="muted">&#9675;</span> <span class="muted">W10-04</span>  <span class="light">Weekly Roundup</span>           <span class="muted">stub</span>        <span class="muted">Thu</span></div>
-
-    <div class="spacer-lg"></div>
-
-    <!-- Produce Command -->
-    <div class="line"><span class="claude-prompt">&gt;</span> <span class="command">/gcd:produce W10-03</span></div>
-    <div class="line">  <span class="muted">Route:</span> <span class="light">linkedin</span></div>
-    <div class="line">  <span class="muted">Loading voice guide...</span> <span class="green">done</span></div>
-    <div class="line">  <span class="muted">Drafting...</span> <span class="green">done</span></div>
-    <div class="line">  <span class="muted">Status:</span> <span class="amber">stub</span> <span class="muted">&rarr;</span> <span class="amber">draft</span></div>
-
-    <div class="spacer-lg"></div>
-
-    <!-- Review Command -->
-    <div class="line"><span class="claude-prompt">&gt;</span> <span class="command">/gcd:review W10-03</span></div>
-    <div class="line">  <span class="muted">Editor-in-chief reviewing...</span></div>
-    <div class="line">  <span class="green">&#10003;</span> <span class="light">Hook grade:</span> <span class="green">A</span></div>
-    <div class="line">  <span class="green">&#10003;</span> <span class="light">Voice alignment:</span> <span class="green">94%</span></div>
-    <div class="line">  <span class="green">&#10003;</span> <span class="light">Decision:</span> <span class="green">pass</span></div>
-    <div class="line">  <span class="muted">Status:</span> <span class="amber">draft</span> <span class="muted">&rarr;</span> <span class="blue">reviewed</span></div>
-
-    <div class="spacer-lg"></div>
-
-    <!-- Final cursor -->
     <div class="line"><span class="prompt">~ $</span> <span class="cursor"></span></div>
 
   </div>

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GCD System Architecture</title>
+<title>Get Content Done — Architecture</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -13,351 +13,292 @@
     color: #1a1a1a;
     display: flex;
     justify-content: center;
-    padding: 40px 20px;
+    padding: 48px 20px;
   }
 
-  .container { width: 1020px; max-width: 100%; }
+  .container { width: 860px; max-width: 100%; }
 
-  /* ── Title ── */
-  .title { text-align: center; margin-bottom: 32px; }
-  .title h1 { font-size: 24px; font-weight: 700; color: #111; margin-bottom: 4px; letter-spacing: -0.3px; }
-  .title p { font-size: 13px; color: #6b7280; }
+  .title { text-align: center; margin-bottom: 36px; }
+  .title h1 { font-size: 22px; font-weight: 700; color: #111; letter-spacing: -0.3px; }
 
-  /* ── Section labels ── */
-  .section-label {
-    font-size: 10px; font-weight: 700; text-transform: uppercase;
-    letter-spacing: 1.2px; color: #6b7280; margin-bottom: 10px;
-  }
-
-  /* ── Chips ── */
-  .chip {
-    display: inline-block; font-size: 11px; font-weight: 700;
-    padding: 3px 8px; border-radius: 5px; white-space: nowrap;
-  }
-  .chip-skill   { background: #e8f0fe; color: #0A66C2; }
-  .chip-agent   { background: #fef0eb; color: #cc785c; }
-  .chip-config  { background: #f3f4f6; color: #6b7280; }
-  .chip-output  { background: #ecfdf5; color: #166534; }
-  .chip-reject  { background: #fef2f2; color: #e87461; }
-  .chip-route   { background: #eff6ff; color: #0A66C2; font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 4px; }
-
-  .chips-row { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 4px; }
-  .chips-row:last-child { margin-bottom: 0; }
-
-  .card-desc { font-size: 11px; color: #6b7280; line-height: 1.4; }
-  .note { font-size: 10px; color: #9ca3af; font-style: italic; }
-
-  /* ═══════════════════════════════════
-     LAYER 1: AUTOMATIONS
-     ═══════════════════════════════════ */
-  .automations {
-    background: #f8fafc; border: 1.5px dashed #d1d5db;
-    border-radius: 10px; padding: 16px 20px; margin-bottom: 28px;
-  }
-  .automations .section-label { color: #475569; }
-  .auto-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
-  .auto-card {
-    background: #fff; border: 1.5px dashed #cbd5e1;
-    border-radius: 10px; padding: 12px 14px; text-align: center;
-  }
-  .auto-card-title { font-size: 12px; font-weight: 700; color: #111; margin-bottom: 3px; }
-  .auto-card-desc  { font-size: 10px; color: #6b7280; line-height: 1.4; }
-  .auto-card-cadence {
-    font-size: 9px; color: #94a3b8; font-weight: 600;
-    text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px;
+  /* ── Flow ── */
+  .flow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    margin-bottom: 32px;
   }
 
-  /* ═══════════════════════════════════
-     LAYER 2: SKILLS + AGENTS
-     ═══════════════════════════════════ */
-  .main-flow { margin-bottom: 6px; }
-  .flow-row { display: flex; align-items: stretch; }
-
-  .stage { flex: 1; display: flex; flex-direction: column; }
-  .stage-label {
-    font-size: 9px; font-weight: 700; text-transform: uppercase;
-    letter-spacing: 1px; color: #9ca3af; margin-bottom: 6px; text-align: center;
+  .stage {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
   }
 
-  .card {
-    background: #fff; border: 1.5px solid #e5e7eb;
-    border-radius: 10px; padding: 14px 16px;
+  .stage-box {
+    background: #fff;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 14px 20px;
+    text-align: center;
+    min-width: 100px;
   }
 
-  .merge-arrow { text-align: center; padding: 4px 0; color: #d1d5db; font-size: 16px; line-height: 1; }
-  .signal-box {
-    border: 1.5px dashed #d1d5db; border-radius: 8px;
-    padding: 8px 12px; text-align: center;
-    font-size: 11px; font-weight: 600; color: #6b7280;
+  .stage-box.gate {
+    border-color: #89b4fa;
+    background: #f8faff;
   }
 
-  /* Arrow connectors */
-  .arrow-connector {
-    display: flex; align-items: center; justify-content: center;
-    width: 36px; min-width: 36px; position: relative;
-  }
-  .arrow-connector::before {
-    content: ''; display: block; width: 100%; height: 2px; background: #d1d5db;
-  }
-  .arrow-connector::after {
-    content: ''; position: absolute; right: 0;
-    width: 0; height: 0;
-    border-top: 5px solid transparent; border-bottom: 5px solid transparent;
-    border-left: 8px solid #d1d5db;
+  .stage-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: #111;
   }
 
-  /* Gate cards */
-  .gate-card {
-    background: #fff; border: 1.5px solid #e5e7eb;
-    border-radius: 8px; padding: 10px 12px; margin-bottom: 6px;
-  }
-  .gate-card:last-child { margin-bottom: 0; }
-  .gate-card.reject-card { border-color: #fca5a5; }
-  .gate-label {
-    font-size: 9px; font-weight: 700; text-transform: uppercase;
-    letter-spacing: 0.5px; color: #9ca3af; margin-bottom: 3px;
+  .stage-sub {
+    font-size: 10px;
+    color: #9ca3af;
+    margin-top: 2px;
   }
 
-  /* ═══════════════════════════════════
-     FEEDBACK LOOPS
-     ═══════════════════════════════════ */
-  .feedback-section {
-    display: flex; justify-content: center; gap: 40px;
-    padding: 10px 0 4px;
+  .arrow {
+    width: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
   }
-  .feedback-tag {
-    display: flex; align-items: center; gap: 6px;
-    font-size: 10px; color: #9ca3af;
+  .arrow::before {
+    content: '';
+    display: block;
+    width: 100%;
+    height: 1.5px;
+    background: #d1d5db;
   }
-  .feedback-tag .dashed-arrow {
-    width: 28px; height: 0; border-top: 1.5px dashed #b0b8c4;
-    position: relative; display: inline-block;
+  .arrow::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    width: 0;
+    height: 0;
+    border-top: 4px solid transparent;
+    border-bottom: 4px solid transparent;
+    border-left: 7px solid #d1d5db;
   }
-  .feedback-tag .dashed-arrow::after {
-    content: ''; position: absolute; right: -1px; top: -4px;
-    border-top: 4px solid transparent; border-bottom: 4px solid transparent;
-    border-left: 6px solid #b0b8c4;
-  }
-  .feedback-tag .curved-icon { font-size: 13px; color: #b0b8c4; }
 
-  /* ═══════════════════════════════════
-     LAYER 3: STATE LAYER
-     ═══════════════════════════════════ */
-  .state-layer {
-    background: #f9fafb; border: 1.5px solid #e5e7eb;
-    border-radius: 10px; padding: 16px 20px; margin-top: 20px;
+  /* ── Reject branch ── */
+  .reject-branch {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: -8px;
+    margin-bottom: 28px;
   }
+
+  .reject-line {
+    width: 0;
+    height: 20px;
+    border-left: 1.5px dashed #fca5a5;
+  }
+
+  .reject-box {
+    background: #fef2f2;
+    border: 1.5px solid #fca5a5;
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #e87461;
+  }
+
+  /* ── Feedback arrow ── */
+  .feedback {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 32px;
+    color: #9ca3af;
+    font-size: 11px;
+  }
+
+  .feedback-arrow {
+    width: 40px;
+    height: 0;
+    border-top: 1.5px dashed #b0b8c4;
+    position: relative;
+    display: inline-block;
+  }
+  .feedback-arrow::after {
+    content: '';
+    position: absolute;
+    left: -1px;
+    top: -4px;
+    border-top: 4px solid transparent;
+    border-bottom: 4px solid transparent;
+    border-right: 6px solid #b0b8c4;
+  }
+
+  /* ── Lifecycle ── */
+  .lifecycle {
+    background: #f9fafb;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 18px 24px;
+    text-align: center;
+  }
+
+  .lifecycle-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: #6b7280;
+    margin-bottom: 12px;
+  }
+
   .lifecycle-row {
-    display: flex; align-items: center; gap: 0;
-    margin: 10px 0; flex-wrap: wrap; justify-content: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    flex-wrap: wrap;
   }
-  .lifecycle-pill {
-    display: inline-block; font-size: 11px; font-weight: 700;
-    padding: 5px 14px; border-radius: 20px;
-    border: 1.5px solid #d1d5db; background: #fff; color: #374151;
+
+  .pill {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 5px 14px;
+    border-radius: 20px;
+    border: 1.5px solid #d1d5db;
+    background: #fff;
+    color: #374151;
   }
-  .lifecycle-pill.green { border-color: #4ade80; color: #166534; background: #f0fdf4; }
-  .lifecycle-pill.red   { border-color: #e87461; color: #e87461; background: #fef2f2; }
-  .lifecycle-arrow {
-    display: inline-block; width: 24px; text-align: center;
-    color: #d1d5db; font-size: 14px; font-weight: 700;
+  .pill.green { border-color: #4ade80; color: #166534; background: #f0fdf4; }
+  .pill.red   { border-color: #e87461; color: #e87461; background: #fef2f2; }
+
+  .pill-arrow {
+    display: inline-block;
+    width: 24px;
+    text-align: center;
+    color: #d1d5db;
+    font-size: 14px;
+    font-weight: 700;
   }
-  .branch-row {
-    display: flex; align-items: center; justify-content: center;
-    gap: 6px; margin-top: 6px;
-  }
-  .branch-line { width: 40px; height: 0; border-top: 1.5px dashed #e87461; }
-  .branch-label { font-size: 10px; color: #9ca3af; font-style: italic; }
-  .state-annotation {
-    font-size: 10px; color: #9ca3af; text-align: center;
-    margin-top: 10px; font-style: italic;
+
+  .lifecycle-note {
+    font-size: 10px;
+    color: #9ca3af;
+    font-style: italic;
+    margin-top: 10px;
   }
 </style>
 </head>
 <body>
 <div class="container">
 
-  <!-- ════════════ TITLE ════════════ -->
   <div class="title">
-    <h1>GCD System Architecture</h1>
-    <p>Get Content Done &mdash; end-to-end content production pipeline</p>
+    <h1>Get Content Done</h1>
   </div>
 
-  <!-- ════════════ LAYER 1: AUTOMATIONS ════════════ -->
-  <div class="automations">
-    <div class="section-label">Automations</div>
-    <div class="auto-grid">
-      <div class="auto-card">
-        <div class="auto-card-title">Morning Pipeline</div>
-        <div class="auto-card-desc">RSS &rarr; Signals &rarr; Scored Briefs</div>
-        <div class="auto-card-cadence">Daily 6:30 AM</div>
+  <!-- ── Main flow ── -->
+  <div class="flow">
+    <div class="stage">
+      <div class="stage-box">
+        <div class="stage-name">Inputs</div>
+        <div class="stage-sub">briefs + ideas</div>
       </div>
-      <div class="auto-card">
-        <div class="auto-card-title">Auto-Retro</div>
-        <div class="auto-card-desc">Sprint analysis + metrics</div>
-        <div class="auto-card-cadence">Weekly</div>
+    </div>
+
+    <div class="arrow"></div>
+
+    <div class="stage">
+      <div class="stage-box">
+        <div class="stage-name">Plan</div>
+        <div class="stage-sub">sprint scoring</div>
       </div>
-      <div class="auto-card" id="voice-drift-card">
-        <div class="auto-card-title">Voice Drift</div>
-        <div class="auto-card-desc">Draft vs published comparison</div>
-        <div class="auto-card-cadence">Weekly</div>
+    </div>
+
+    <div class="arrow"></div>
+
+    <div class="stage">
+      <div class="stage-box">
+        <div class="stage-name">Produce</div>
+        <div class="stage-sub">route-dispatched</div>
       </div>
-      <div class="auto-card">
-        <div class="auto-card-title">Weekly Report</div>
-        <div class="auto-card-desc">Throughput + engagement trends</div>
-        <div class="auto-card-cadence">After retro</div>
+    </div>
+
+    <div class="arrow"></div>
+
+    <div class="stage" id="review-stage">
+      <div class="stage-box gate">
+        <div class="stage-name">Review</div>
+        <div class="stage-sub">agent gate</div>
       </div>
-      <div class="auto-card">
-        <div class="auto-card-title">Export Watcher</div>
-        <div class="auto-card-desc">LinkedIn data &rarr; metrics sync</div>
-        <div class="auto-card-cadence">On export</div>
+    </div>
+
+    <div class="arrow"></div>
+
+    <div class="stage">
+      <div class="stage-box gate">
+        <div class="stage-name">Approve</div>
+        <div class="stage-sub">human gate</div>
+      </div>
+    </div>
+
+    <div class="arrow"></div>
+
+    <div class="stage">
+      <div class="stage-box" style="border-color: #4ade80; background: #f0fdf4;">
+        <div class="stage-name">Publish</div>
+      </div>
+    </div>
+
+    <div class="arrow"></div>
+
+    <div class="stage">
+      <div class="stage-box">
+        <div class="stage-name">Retro</div>
+        <div class="stage-sub">metrics + learning</div>
       </div>
     </div>
   </div>
 
-  <!-- ════════════ LAYER 2: SKILLS + AGENTS ════════════ -->
-  <div class="main-flow">
-    <div class="section-label" style="margin-bottom: 8px;">Skills + Agents</div>
-    <div class="flow-row">
-
-      <!-- Stage 1: Inputs -->
-      <div class="stage" style="flex: 0.85;">
-        <div class="stage-label">Inputs</div>
-        <div class="card" style="margin-bottom: 6px;">
-          <div class="chips-row"><span class="chip chip-config">RSS Pipeline</span></div>
-          <div class="card-desc">Automated signals from Miniflux feeds</div>
-        </div>
-        <div class="card" style="margin-bottom: 6px;">
-          <div class="chips-row"><span class="chip chip-skill">/seed-idea</span></div>
-          <div class="card-desc">Manual ideas &amp; observations</div>
-        </div>
-        <div class="merge-arrow">&darr;</div>
-        <div class="signal-box">Signal Briefs</div>
-      </div>
-
-      <div class="arrow-connector"></div>
-
-      <!-- Stage 2: Sprint Planning -->
-      <div class="stage" style="flex: 0.9;">
-        <div class="stage-label">Sprint Planning</div>
-        <div class="card">
-          <div class="chips-row"><span class="chip chip-skill">/gcd:plan-sprint</span></div>
-          <div class="chips-row" style="margin-top: 4px;"><span class="chip chip-agent">gcd-sprint-planner</span></div>
-          <div class="chips-row" style="margin-top: 4px;"><span class="chip chip-config">pillars.json</span></div>
-          <div style="margin-top: 8px;"><span class="chip chip-output">Sprint assigned</span></div>
-        </div>
-      </div>
-
-      <div class="arrow-connector"></div>
-
-      <!-- Stage 3: Production -->
-      <div class="stage" style="flex: 1.3;" id="production-stage">
-        <div class="stage-label">Production</div>
-        <div class="card">
-          <div class="chips-row"><span class="chip chip-skill">/gcd:produce</span></div>
-          <div class="chips-row" style="margin-top: 4px;">
-            <span class="chip chip-route">LinkedIn</span>
-            <span class="chip chip-route">Substack</span>
-            <span class="chip chip-route">Twitter/X</span>
-            <span class="chip chip-route">Newsletter</span>
-          </div>
-          <div class="chips-row" style="margin-top: 6px;"><span class="chip chip-agent">gcd-producer</span></div>
-          <div class="chips-row" style="margin-top: 3px;">
-            <span class="chip chip-agent">gcd-researcher</span>
-            <span class="note">essay route</span>
-          </div>
-          <div class="chips-row" style="margin-top: 3px;">
-            <span class="chip chip-agent">gcd-amplifier</span>
-            <span class="note">cross-platform</span>
-          </div>
-          <div class="chips-row" style="margin-top: 4px;"><span class="chip chip-config">voice guide</span></div>
-          <div style="margin-top: 8px;"><span class="chip chip-output">Draft + .draft.md</span></div>
-        </div>
-      </div>
-
-      <div class="arrow-connector"></div>
-
-      <!-- Stage 4: Quality Gates -->
-      <div class="stage" style="flex: 1.1;">
-        <div class="stage-label">Quality Gates</div>
-        <div class="gate-card">
-          <div class="gate-label">Gate 1</div>
-          <div class="chips-row">
-            <span class="chip chip-skill">/gcd:review</span>
-            <span class="chip chip-agent">gcd-reviewer</span>
-          </div>
-          <div class="card-desc" style="margin-top: 3px;">Voice, structure, hook grade, SEO</div>
-        </div>
-        <div class="gate-card">
-          <div class="gate-label">Gate 2</div>
-          <div class="chips-row">
-            <span class="chip chip-skill">/gcd:approve</span>
-            <span style="font-size: 12px; font-weight: 700; color: #374151; margin-left: 4px;">Human</span>
-          </div>
-          <div class="card-desc" style="margin-top: 3px;">Tone, judgment, relevance</div>
-        </div>
-        <div class="gate-card reject-card">
-          <div class="chips-row"><span class="chip chip-reject">/gcd:reject</span></div>
-          <div class="card-desc" style="margin-top: 3px; color: #e87461;">Terminal state. Preserved for learning.</div>
-        </div>
-      </div>
-
-      <div class="arrow-connector"></div>
-
-      <!-- Stage 5: Output -->
-      <div class="stage" style="flex: 0.85;">
-        <div class="stage-label">Output</div>
-        <div class="card">
-          <div style="margin-bottom: 8px;">
-            <span class="chip chip-output" style="font-size: 12px; padding: 4px 10px;">Published content</span>
-          </div>
-          <div class="chips-row"><span class="chip chip-skill">/gcd:retro</span></div>
-          <div class="chips-row" style="margin-top: 4px;"><span class="chip chip-agent">gcd-metrics-analyst</span></div>
-          <div style="margin-top: 8px;"><span class="chip chip-output">Sprint measured</span></div>
-        </div>
-      </div>
-
-    </div>
+  <!-- ── Reject branch ── -->
+  <div class="reject-branch">
+    <div style="font-size: 10px; color: #9ca3af;">Review / Approve</div>
+    <div class="reject-line"></div>
+    <div class="reject-box">Reject</div>
   </div>
 
-  <!-- ════════════ FEEDBACK LOOPS ════════════ -->
-  <div class="feedback-section">
-    <div class="feedback-tag">
-      <span class="curved-icon">&#8630;</span>
-      <span class="dashed-arrow"></span>
-      <span>Performance data feeds next sprint</span>
-      <span style="font-size: 9px; color: #b0b8c4;">(Output &rarr; Sprint Planning)</span>
-    </div>
-    <div class="feedback-tag">
-      <span class="curved-icon">&#8630;</span>
-      <span class="dashed-arrow"></span>
-      <span>Voice rules update</span>
-      <span style="font-size: 9px; color: #b0b8c4;">(Voice Drift &rarr; Production)</span>
-    </div>
+  <!-- ── Feedback loop ── -->
+  <div class="feedback">
+    <span>Retro</span>
+    <span class="feedback-arrow"></span>
+    <span>performance data feeds next sprint</span>
   </div>
 
-  <!-- ════════════ LAYER 3: STATE LAYER ════════════ -->
-  <div class="state-layer">
-    <div class="section-label">Content Lifecycle</div>
+  <!-- ── Lifecycle ── -->
+  <div class="lifecycle">
+    <div class="lifecycle-label">Content Lifecycle</div>
     <div class="lifecycle-row">
-      <span class="lifecycle-pill">stub</span>
-      <span class="lifecycle-arrow">&rarr;</span>
-      <span class="lifecycle-pill">draft</span>
-      <span class="lifecycle-arrow">&rarr;</span>
-      <span class="lifecycle-pill">reviewed</span>
-      <span class="lifecycle-arrow">&rarr;</span>
-      <span class="lifecycle-pill">approved</span>
-      <span class="lifecycle-arrow">&rarr;</span>
-      <span class="lifecycle-pill green">published</span>
-      <span class="lifecycle-arrow">&rarr;</span>
-      <span class="lifecycle-pill green">measured</span>
+      <span class="pill">stub</span>
+      <span class="pill-arrow">&rarr;</span>
+      <span class="pill">draft</span>
+      <span class="pill-arrow">&rarr;</span>
+      <span class="pill">reviewed</span>
+      <span class="pill-arrow">&rarr;</span>
+      <span class="pill">approved</span>
+      <span class="pill-arrow">&rarr;</span>
+      <span class="pill green">published</span>
+      <span class="pill-arrow">&rarr;</span>
+      <span class="pill green">measured</span>
     </div>
-    <div class="branch-row">
-      <span class="branch-label">branches off draft / reviewed</span>
-      <span class="branch-line"></span>
-      <span class="lifecycle-pill red">rejected</span>
-    </div>
-    <div class="state-annotation">YAML frontmatter is the single source of truth &mdash; files never move, status lives in metadata</div>
+    <div class="lifecycle-note">YAML frontmatter is the single source of truth &mdash; files never move</div>
   </div>
 
 </div>

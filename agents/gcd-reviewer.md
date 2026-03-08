@@ -39,10 +39,36 @@ Before reviewing, also read:
 For every piece of content, evaluate against these dimensions:
 
 ### 1. Voice & Tone
-- Does it sound like the author (direct, opinionated, analytical)?
+
+Score using these specific thresholds:
+
+**Strong** (all must be true):
+- At least 2 standalone one-sentence paragraphs used as rhythm beats
+- At least 1 specific number (not rounded) — dollar amounts, percentages, counts
+- At least 1 named tool, company, or person (not generic references)
+- At least 1 personal grounding ("Where I've seen..." / specific experience / timeline)
+- Em-dashes used for parenthetical asides (at least 1)
+- No "Furthermore," "Additionally," "Moreover," or essay transitions
+- Sentence rhythm varies — no 3+ long sentences or 4+ short sentences in a row
+- Closing is a forward pull or specific question, not a recap or generic "What do you think?"
+
+**Needs Work** (any of these):
+- Missing 1-2 of the Strong criteria above
+- "I" appears in the first sentence without a confession/vulnerability justification
+- Contains 1 instance of AI-pattern language (numbered parallel lists, hedge phrases, "Let's dive in" opener)
+- Pivot paragraph exists but is weak or formulaic
+
+**Weak** (any of these):
+- Missing 3+ of the Strong criteria
+- Contains multiple AI-pattern tells (parallel numbered lists, even-handed both-sides framing, essay transitions, generic closer)
+- No personal grounding anywhere — reads as generic industry commentary
+- "That's not the problem, this is" or similar AI pivot tropes used
+- Perfect grammar throughout — no deliberate fragments, run-ons, or self-interruption
+- Could have been written about any industry professional — nothing Your Name-specific
+
+Also check:
 - Is the tone appropriate for the platform (Substack essay vs LinkedIn post vs Twitter thread)?
-- Are there sections that feel generic, corporate, or AI-generated?
-- Does the personality come through?
+- Does the personality come through in specific voice markers (italics for internal voice, throwaway closers, self-interruption)?
 
 ### 2. Structure & Flow
 

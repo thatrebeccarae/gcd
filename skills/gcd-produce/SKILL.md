@@ -202,7 +202,7 @@ tags: [{relevant tags derived from topic and pillar, comma-separated, lowercase,
 Follow all platform-specific rules from the voice guide. The LinkedIn hook in the first 2 lines must pass the 140-character fold test (complete thought before the "see more" break). No external links in the post body — put links in the first comment. Target 1,300–2,000 characters for the post body.
 ```
 
-After gcd-producer completes, proceed to Step 7.
+After gcd-producer completes, proceed to Step 6E (Voice Validation).
 
 ### Step 6B: Substack Route
 
@@ -296,7 +296,7 @@ image: ""
 Write a long-form essay with headers, evidence, and a CTA. Follow all platform-specific rules from the voice guide. Include 3 title variants with pattern labels (contrarian, data-led, direct address, etc.) at the top of the body before the main essay content. The hook — title + subtitle + opening paragraph — must function as a three-part hook system where each element works independently.
 ```
 
-After gcd-producer completes, proceed to Step 7.
+After gcd-producer completes, proceed to Step 6E (Voice Validation).
 
 ### Step 6C: Newsletter Route
 
@@ -507,7 +507,23 @@ N/ [Final tweet - CTA or question, max 280 chars]
 - Each tweet earns the next: [Y/N]
 ```
 
-After gcd-producer completes, proceed to Step 7.
+After gcd-producer completes, proceed to Step 6E (Voice Validation).
+
+### Step 6E: Voice Validation (Pre-Save Check)
+
+Before writing the final file, run the draft through these 5 quick tests. If any test fails, revise the draft before saving.
+
+**Test 1 — Rhythm:** Count standalone one-sentence paragraphs. If fewer than 2, add rhythm beats where a point needs to land. Check for 3+ consecutive long sentences or 4+ consecutive short ones — break the pattern.
+
+**Test 2 — Specificity:** Scan for round numbers ("thousands," "dozens," "a few"), generic tool references ("a popular platform," "a leading company"), and missing personal grounding. Replace each with a specific number, named entity, or "Where I've seen..." example.
+
+**Test 3 — AI Tells:** Check for: numbered lists with parallel structure and even spacing, "Furthermore/Additionally/Moreover," "Let's dive in" or "Here's the thing" as opener, "That's not the problem, this is" pivot pattern, hedge phrases ("It might be worth considering"), generic closer ("What are your thoughts?"), even-handed both-sides framing. Remove or rewrite any found.
+
+**Test 4 — Pivot & Close:** Verify a structural pivot paragraph exists (reframes everything above it). Verify the closing pulls forward (question, prediction, newsletter CTA) — not a summary or recap.
+
+**Test 5 — Voice Drift file:** Read `~/your-vault/03-Areas/professional-content/strategy/voice-drift.md` if it exists. Check the `## Anti-Patterns` section for any NEVER rules. Verify the draft doesn't violate any of them.
+
+If all 5 tests pass, proceed to Step 7. If any fail, revise the draft and re-check before proceeding.
 
 ### Step 7: Update Brief Status
 

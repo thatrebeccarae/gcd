@@ -1,2 +1,4 @@
 # Product names mentioned in documentation context
 Miniflux
+# False positive: "CONSTRAINTS" matches Slack channel ID pattern
+CONSTRAINTS
