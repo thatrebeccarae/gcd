@@ -1,4 +1,12 @@
 # Product names mentioned in documentation context
-Miniflux
+[Mm][Ii][Nn][Ii][Ff][Ll][Uu][Xx]
 # False positive: "CONSTRAINTS" matches Slack channel ID pattern
 CONSTRAINTS
+# Pipeline scripts and archive reference TARS host and infrastructure by design (private repo)
+[Tt][Aa][Rr][Ss]
+\.env
+/Users/tars
+# Pipeline deploy/export scripts reference n8n API key variable (not the actual key)
+[Nn]8[Nn].[Aa][Pp][Ii].[Kk][Ee][Yy]
+# Archive docs reference Tailscale IPs and webhook URLs (private repo, not deployed)
+\b\d+\.\d+\.\d+\.\d+\b

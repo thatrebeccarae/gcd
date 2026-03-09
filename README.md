@@ -4,12 +4,12 @@
 
 **Sprint planning, two-gate quality, and performance feedback loops for content — powered by Claude Code skills.**
 
-[![Claude Code](https://img.shields.io/badge/Claude_Code-Skills-cc785c?style=for-the-badge&logo=anthropic&logoColor=white)](https://docs.anthropic.com/en/docs/claude-code)
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-Rebecca%20Rae%20Barton-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white)](https://linkedin.com/in/rebeccaraebarton)
-[![X](https://img.shields.io/badge/X-@rebeccarae-000000?style=for-the-badge&logo=x&logoColor=white)](https://x.com/rebeccarae)
-[![GitHub stars](https://img.shields.io/github/stars/thatrebeccarae/get-content-done?style=for-the-badge&logo=github&color=181717)](https://github.com/thatrebeccarae/get-content-done/stargazers)
-[![License](https://img.shields.io/badge/License-MIT-0A66C2?style=for-the-badge)](LICENSE)
-[![Clone](https://img.shields.io/badge/Clone-git%20clone-f78166?style=for-the-badge&logo=git&logoColor=white)](https://github.com/thatrebeccarae/get-content-done)
+[![Claude Code](https://img.shields.io/badge/Claude_Code-Skills-555?style=for-the-badge&labelColor=D97757&logo=claude&logoColor=white)](https://docs.anthropic.com/en/docs/claude-code)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Rebecca%20Rae%20Barton-555?style=for-the-badge&labelColor=0077B5&logo=linkedin&logoColor=white)](https://linkedin.com/in/rebeccaraebarton)
+[![X](https://img.shields.io/badge/X-@rebeccarae-555?style=for-the-badge&labelColor=000000&logo=x&logoColor=white)](https://x.com/rebeccarae)
+[![GitHub stars](https://img.shields.io/github/stars/thatrebeccarae/get-content-done?style=for-the-badge&logo=github&color=121011)](https://github.com/thatrebeccarae/get-content-done/stargazers)
+[![License](https://img.shields.io/badge/License-MIT-555?style=for-the-badge&labelColor=353535)](LICENSE)
+[![Clone](https://img.shields.io/badge/Clone-git%20clone-555?style=for-the-badge&labelColor=F05033&logo=git&logoColor=white)](https://github.com/thatrebeccarae/get-content-done)
 
 <br>
 <br>
@@ -26,7 +26,7 @@ git clone https://github.com/thatrebeccarae/get-content-done.git
 <br>
 <br>
 
-[Why I Built This](#why-i-built-this) · [What It Does](#what-it-does) · [Skills](#skills) · [Agents](#agents) · [How It Works](#how-it-works) · [Getting Started](#getting-started) · [Extending GCD](#extending-gcd) · [Credits](#credits)
+[Why I Built This](#why-i-built-this) · [Who This Is For](#who-this-is-for) · [Getting Started](#getting-started) · [What It Does](#what-it-does) · [Skills](#skills) · [Agents](#agents) · [How It Works](#how-it-works) · [Extending GCD](#extending-gcd) · [Credits](#credits) · [Contributing](#contributing) · [License](#license)
 
 </div>
 
@@ -36,9 +36,55 @@ git clone https://github.com/thatrebeccarae/get-content-done.git
 
 Content production for solo builders is either chaotic or over-engineered. You're either dumping ideas into a Google Doc and hoping you remember to post, or wrangling a Notion database with 40 columns that nobody maintains. I wanted sprint methodology applied to content -- plan, produce, review, ship, retro -- with AI handling the parts it's good at (scoring, drafting, consistency checks) and humans handling the parts it's not (voice, judgment, "does this actually sound like me?").
 
+## Who This Is For
+
+- **Solo builders and creator-operators** who produce content across multiple platforms and need structure without a team
+- **Content strategists** who want sprint methodology applied to content production, not just software
+- **Claude Code users** who want a real-world skills + agents workflow they can extend and adapt
+- **Obsidian and markdown-first writers** who refuse to move their content into another SaaS tool just to get a pipeline
+- **Anyone publishing 3+ pieces per week** who needs quality gates, pillar enforcement, and performance feedback loops that actually close
+
+## Getting Started
+
+**Prerequisites:**
+
+- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) CLI installed and configured
+- A markdown-based content store (Obsidian vault, flat files, whatever works)
+
+**Install:**
+
+```bash
+git clone https://github.com/thatrebeccarae/get-content-done.git
+cd get-content-done
+./install.sh
+```
+
+**Configure:**
+
+1. Copy `pillars.example.json` to your repo as `pillars.json`
+2. Edit pillar names, posting days, keywords, and content types to match your strategy
+3. Update vault paths in skill files to point to your content directories
+4. Add signal briefs to your vault's inbox (manually via `/seed-idea` or from any source)
+5. Run `/gcd:plan-sprint` to kick off your first sprint
+
+<details>
+<summary><strong>Path configuration</strong></summary>
+
+Skills and agents reference three path categories that you'll need to update:
+
+| Path | Default | What it points to |
+|------|---------|-------------------|
+| Repo path | `~/your-repo/` | Where you cloned GCD (for `pillars.json`, schemas, retros) |
+| Content path | `~/your-vault/content/` | Where your content files live |
+| Brief path | `~/your-vault/briefs/` | Where signal briefs are stored |
+
+Search for these paths in the skill and agent `.md` files and replace with your actual paths.
+
+</details>
+
 ## What It Does
 
-GCD applies sprint methodology to content production. You define your content pillars, feed in signal briefs, and run a weekly cycle: **plan → produce → review → approve → retro**. Each step is a Claude Code slash command. Each piece of content tracks its own state in YAML frontmatter. Nothing moves directories. Nothing slips through the cracks.
+GCD applies sprint methodology to content production. You define your content pillars, feed in signal briefs, and run a weekly cycle: **plan → produce → review → approve → retro**. Each step is a Claude Code slash command, and the planning step can also run autonomously via the morning pipeline (auto-assigning top briefs by impact score when no sprint-assigned stubs exist). Each piece of content tracks its own state in YAML frontmatter. Nothing moves directories. Nothing slips through the cracks.
 
 **State layer** — `pillars.json` defines your content pillars, posting schedule, and quality gates. YAML frontmatter on every content file tracks lifecycle status. Files never move; status lives in frontmatter only.
 
@@ -159,44 +205,6 @@ See [`frontmatter-spec.md`](.planning/schemas/frontmatter-spec.md) for the compl
 
 </details>
 
-## Getting Started
-
-**Prerequisites:**
-
-- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) CLI installed and configured
-- A markdown-based content store (Obsidian vault, flat files, whatever works)
-
-**Install:**
-
-```bash
-git clone https://github.com/thatrebeccarae/get-content-done.git
-cd get-content-done
-./install.sh
-```
-
-**Configure:**
-
-1. Copy `pillars.example.json` to your repo as `pillars.json`
-2. Edit pillar names, posting days, keywords, and content types to match your strategy
-3. Update vault paths in skill files to point to your content directories
-4. Add signal briefs to your vault's inbox (manually via `/seed-idea` or from any source)
-5. Run `/gcd:plan-sprint` to kick off your first sprint
-
-<details>
-<summary><strong>Path configuration</strong></summary>
-
-Skills and agents reference three path categories that you'll need to update:
-
-| Path | Default | What it points to |
-|------|---------|-------------------|
-| Repo path | `~/your-repo/` | Where you cloned GCD (for `pillars.json`, schemas, retros) |
-| Content path | `~/your-vault/content/` | Where your content files live |
-| Brief path | `~/your-vault/briefs/` | Where signal briefs are stored |
-
-Search for these paths in the skill and agent `.md` files and replace with your actual paths.
-
-</details>
-
 ## Extending GCD
 
 GCD is the skill + agent + state layer. What feeds it — and what you do after `/gcd:approve` — is up to you.
@@ -221,4 +229,4 @@ An active project and open-sourced as-is. Use it, adapt it, break it apart for p
 
 ## License
 
-[MIT](LICENSE)
+MIT — see [LICENSE](LICENSE) for details.

@@ -21,7 +21,7 @@ Interactive sprint planning orchestrator. Walks through reading the brief queue,
 - Do NOT write SPRINT.md — that is /gcd:status domain exclusively.
 - Do NOT change the `status` field on any brief — status stays `stub` until Phase 3.
 - Do NOT create content files — Phase 2 writes brief frontmatter only.
-- Do NOT auto-assign without user confirmation — every assignment requires explicit consent.
+- Do NOT auto-assign without user confirmation in this skill — every interactive assignment requires explicit consent. (Note: the morning pipeline auto-assigns top 3 briefs by impact score when no sprint-assigned stubs exist. This skill handles manual/interactive sprint planning only.)
 - Do NOT call /gcd:status directly — invite the user to run it themselves.
 - Do NOT block on unfilled pillar slots — 1-4 assigned pieces is a valid sprint.
 

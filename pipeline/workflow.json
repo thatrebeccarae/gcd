@@ -1,0 +1,996 @@
+{
+  "name": "Daily Feed Intelligence",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 6,
+              "triggerAtMinute": 0
+            }
+          ]
+        }
+      },
+      "id": "dfi-schedule",
+      "name": "Daily 6am ET",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://miniflux:8080/v1/entries",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "order",
+              "value": "published_at"
+            },
+            {
+              "name": "direction",
+              "value": "desc"
+            },
+            {
+              "name": "limit",
+              "value": "200"
+            },
+            {
+              "name": "published_after",
+              "value": "={{ Math.floor((Date.now() - 25*60*60*1000) / 1000) }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Auth-Token",
+              "value": "={{ $env.MINIFLUX_API_TOKEN }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "dfi-fetch",
+      "name": "Fetch Recent Articles",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        220,
+        0
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": ""
+          },
+          "conditions": [
+            {
+              "id": "has-entries",
+              "leftValue": "={{ $json.entries?.length || 0 }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "dfi-if",
+      "name": "Has Entries?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format RSS digest from unread entries only\nconst allEntries = $input.first().json.entries || [];\nconst entries = allEntries.filter(e => e.status === 'unread');\nconst today = new Date().toLocaleDateString('en-CA');\n\nif (entries.length === 0) {\n  return [{\n    json: {\n      markdown: `# Daily RSS Digest - ${today}\\n\\n**No unread articles today.**\\n`,\n      filename: `${today}.md`,\n      entryIds: [],\n      totalCount: 0\n    }\n  }];\n}\n\n// Group by category\nconst categories = {};\nconst starred = [];\n\nfor (const entry of entries) {\n  const cat = entry.feed.category.title;\n  if (!categories[cat]) categories[cat] = [];\n\n  const plainText = (entry.content || '')\n    .replace(/<[^>]*>/g, '')\n    .replace(/&amp;/g, '&')\n    .replace(/&lt;/g, '<')\n    .replace(/&gt;/g, '>')\n    .replace(/&quot;/g, '\"')\n    .replace(/&#39;/g, \"'\")\n    .replace(/\\s+/g, ' ')\n    .trim()\n    .substring(0, 200);\n\n  const published = new Date(entry.published_at).toLocaleDateString('en-US', {\n    month: 'short', day: 'numeric'\n  });\n\n  const item = {\n    title: entry.title,\n    url: entry.url,\n    feed: entry.feed.title,\n    published: published,\n    preview: plainText,\n    id: entry.id,\n    starred: entry.starred\n  };\n\n  if (entry.starred) starred.push(item);\n  categories[cat].push(item);\n}\n\nlet md = `# Daily RSS Digest - ${today}\\n\\n`;\nmd += `**${entries.length} unread articles across ${Object.keys(categories).length} categories**\\n\\n`;\n\nif (starred.length > 0) {\n  md += `## Priority Reads\\n\\n`;\n  for (const item of starred) {\n    md += `- [${item.title}](${item.url}) - *${item.feed}*\\n`;\n  }\n  md += `\\n`;\n}\n\nconst order = ['Industry News', 'Growth + Marketing', 'Product + Engineering', 'Business'];\nconst sortedCats = Object.keys(categories).sort((a, b) => {\n  const ai = order.indexOf(a);\n  const bi = order.indexOf(b);\n  return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);\n});\n\nfor (const cat of sortedCats) {\n  const items = categories[cat];\n  md += `## ${cat} (${items.length})\\n\\n`;\n  for (const item of items) {\n    md += `- [${item.title}](${item.url}) - *${item.feed}* - ${item.published}\\n`;\n    md += `  > ${item.preview}...\\n\\n`;\n  }\n}\n\nconst entryIds = entries.map(e => e.id);\n\n// Build category summary for Slack\nconst catSummary = {};\nfor (const cat of sortedCats) {\n  catSummary[cat] = categories[cat].length;\n}\n\nreturn [{\n  json: {\n    markdown: md,\n    filename: `${today}.md`,\n    entryIds: entryIds,\n    totalCount: entries.length,\n    catSummary: catSummary,\n    starred: starred,\n    articlesByCategory: categories\n  }\n}];"
+      },
+      "id": "dfi-digest-format",
+      "name": "Format Digest Markdown",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        700,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { markdown, filename } = $input.first().json;\nconst fs = require('fs');\nconst dir = '/home/node/your-vault/01-Inbox/daily-rss-digest';\nconst path = dir + '/' + filename;\n\nif (!fs.existsSync(dir)) {\n  fs.mkdirSync(dir, { recursive: true });\n}\n\nfs.writeFileSync(path, markdown, 'utf8');\n\nreturn [{\n  json: {\n    ...$input.first().json,\n    savedTo: path,\n    success: true\n  }\n}];"
+      },
+      "id": "dfi-digest-save",
+      "name": "Save Digest to Vault",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        920,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "http://miniflux:8080/v1/entries",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Auth-Token",
+              "value": "={{ $env.MINIFLUX_API_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ entry_ids: $json.entryIds, status: 'read' }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "id": "dfi-mark-read",
+      "name": "Mark Entries as Read",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1140,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Load 7-day history from JSON files\nconst fs = require('fs');\nconst historyDir = '/home/node/your-vault/01-Inbox/content-signals/history';\nconst entries = $input.first().json.entries || [];\n\nif (!fs.existsSync(historyDir)) {\n  fs.mkdirSync(historyDir, { recursive: true });\n}\n\nconst now = new Date();\nconst history = [];\nlet daysWithData = 0;\n\nfor (let i = 1; i <= 14; i++) {\n  const d = new Date(now);\n  d.setDate(d.getDate() - i);\n  const dateStr = d.toLocaleDateString('en-CA');\n  const filePath = `${historyDir}/${dateStr}-topics.json`;\n  try {\n    if (fs.existsSync(filePath)) {\n      const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));\n      if (i <= 7) {\n        history.push(data);\n        daysWithData++;\n      }\n    }\n  } catch (e) {}\n}\n\n// Prune files older than 14 days\ntry {\n  const files = fs.readdirSync(historyDir);\n  for (const file of files) {\n    if (!file.endsWith('-topics.json')) continue;\n    const dateMatch = file.match(/^(\\d{4}-\\d{2}-\\d{2})/);\n    if (dateMatch) {\n      const fileDate = new Date(dateMatch[1]);\n      const daysDiff = (now - fileDate) / (1000 * 60 * 60 * 24);\n      if (daysDiff > 14) {\n        fs.unlinkSync(`${historyDir}/${file}`);\n      }\n    }\n  }\n} catch (e) {}\n\nreturn [{\n  json: {\n    entries,\n    history,\n    daysWithData,\n    coldStart: daysWithData < 7\n  }\n}];"
+      },
+      "id": "dfi-history",
+      "name": "Load 7-Day History",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        700,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract topics with pillar relevance filtering + topic clustering\n// v2: Filters for Your Name's content pillars, clusters overlapping n-grams\nconst { entries, history, daysWithData, coldStart } = $input.first().json;\n\n// ============================================================\n// CONTENT PILLARS \u2014 topics must match \u22651 pillar to become signals\n// ============================================================\nconst CONTENT_PILLARS = {\n  'AI & Automation': {\n    terms: [\n      'ai','ai agent','ai agents','agentic','llm','large language model',\n      'claude','openai','anthropic','gemini','perplexity','mistral',\n      'model context protocol','mcp','multi-agent','workflow automation',\n      'n8n','zapier','ai tool','ai tools','copilot','prompt engineering',\n      'rag','vector database','embedding','ai infrastructure','vibe coding',\n      'cursor','windsurf','claude code','chatgpt','ai marketing',\n      'ai commerce','generative ai','gen ai','machine learning',\n      'deep learning','chatbot','ai assistant','ai workflow','ai automation',\n      'ai search','ai shopping','agentic commerce','coding assistant',\n      'ai coding','artificial intelligence','computer vision','nlp',\n      'transformer','diffusion','ai strategy','ai adoption','ai ops',\n      'ai productivity','ai developer','ai platform'\n    ],\n    pillar: 'Pillar One'\n  },\n  'E-Commerce & DTC': {\n    terms: [\n      'ecommerce','e-commerce','shopify','shopify plus','dtc',\n      'direct-to-consumer','d2c','marketplace','amazon','walmart connect',\n      'conversion rate','aov','average order value','cart abandonment',\n      'checkout','product page','fulfillment','unit economics',\n      'customer acquisition cost','cac','ltv','lifetime value','arpu',\n      'omnichannel','headless commerce','composable commerce',\n      'tiktok shop','social commerce','subscription commerce',\n      'bigcommerce','woocommerce','magento','product feed',\n      'merchandising','pricing strategy','dropship','wholesale',\n      'b2b commerce','live shopping','commerce platform','online store',\n      'product discovery','shopping experience','order management'\n    ],\n    pillar: 'E-Commerce Strategy'\n  },\n  'Marketing & Growth': {\n    terms: [\n      'klaviyo','email marketing','lifecycle marketing','retention marketing',\n      'crm','customer retention','churn','segmentation','personalization',\n      'attribution','roas','return on ad spend','cpa','cost per acquisition',\n      'performance marketing','paid media','google ads','meta ads',\n      'facebook ads','seo','retail media','retail media network','rmn',\n      'programmatic','cro','conversion optimization','analytics','ga4',\n      'first-party data','zero party data','cookieless','marketing ops',\n      'martech','marketing automation','cdp','customer data platform',\n      'incrementality','media mix','marketing measurement','demand gen',\n      'growth marketing','brand marketing','content marketing',\n      'influencer marketing','affiliate marketing','marketing budget',\n      'marketing roi','marketing leader','marketing strategy',\n      'paid social','paid search','marketing spend','ad spend',\n      'creative strategy','marketing analytics','marketing team'\n    ],\n    pillar: 'E-Commerce Strategy'\n  },\n  'Leadership & Career': {\n    terms: [\n      'hiring','layoffs','org design','org chart','vp marketing',\n      'cmo','chief marketing officer','marketing leadership','management',\n      'fractional','consulting','remote work','return to office','rto',\n      'hybrid work','salary','compensation','job market','career',\n      'title inflation','marketing team','marketing org','team structure',\n      'culture','burnout','talent','recruiting','marketing leader',\n      'executive','workforce','upskilling','reskilling','job search',\n      'interview','resume','networking','promotion','career growth',\n      'work-life balance','quiet quitting','great resignation'\n    ],\n    pillar: 'Pillar Three'\n  }\n};\n\n// Build term \u2192 pillar(s) lookup, sorted longest-first for matching\nconst termToPillars = {};\nfor (const [name, config] of Object.entries(CONTENT_PILLARS)) {\n  for (const term of config.terms) {\n    const t = term.toLowerCase();\n    if (!termToPillars[t]) termToPillars[t] = [];\n    if (!termToPillars[t].includes(name)) termToPillars[t].push(name);\n  }\n}\nconst allTermsSorted = Object.keys(termToPillars).sort((a, b) => b.length - a.length);\n\nfunction scorePillarRelevance(text) {\n  const lower = text.toLowerCase();\n  const matched = {};\n  for (const term of allTermsSorted) {\n    let found = false;\n    if (term.length <= 4) {\n      // Short terms: require word boundary to avoid false positives\n      // e.g. \"rag\" should not match \"leverages\", \"cro\" should not match \"cross\"\n      const re = new RegExp('\\\\b' + term.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&') + '\\\\b', 'i');\n      found = re.test(lower);\n    } else {\n      found = lower.includes(term);\n    }\n    if (found) {\n      for (const pillar of termToPillars[term]) {\n        if (!matched[pillar]) matched[pillar] = [];\n        if (!matched[pillar].includes(term)) matched[pillar].push(term);\n      }\n    }\n  }\n  return matched;\n}\n\n// ============================================================\n// Stopwords + noise (expanded)\n// ============================================================\nconst stopwords = new Set([\n  'a','about','above','after','again','against','all','am','an','and','any','are',\n  \"aren't\",'as','at','be','because','been','before','being','below','between','both',\n  'but','by',\"can't\",'cannot','could',\"couldn't\",'did',\"didn't\",'do','does',\"doesn't\",\n  'doing',\"don't\",'down','during','each','few','for','from','further','get','gets',\n  'got','had',\"hadn't\",'has',\"hasn't\",'have',\"haven't\",'having','he',\"he'd\",\"he'll\",\n  \"he's\",'her','here',\"here's\",'hers','herself','him','himself','his','how',\"how's\",\n  'i',\"i'd\",\"i'll\",\"i'm\",\"i've\",'if','in','into','is',\"isn't\",'it',\"it's\",'its',\n  'itself','just',\"let's\",'me','might','more','most',\"mustn't\",'my','myself','new',\n  'no','nor','not','now','of','off','on','once','one','only','or','other','ought',\n  'our','ours','ourselves','out','over','own','re','same','say','says',\"shan't\",\n  'she',\"she'd\",\"she'll\",\"she's\",'should',\"shouldn't\",'so','some','still','such',\n  'take','than','that',\"that's\",'the','their','theirs','them','themselves','then',\n  'there',\"there's\",'these','they',\"they'd\",\"they'll\",\"they're\",\"they've\",'this',\n  'those','through','to','too','under','until','up','us','use','very','want','was',\n  \"wasn't\",'we',\"we'd\",\"we'll\",\"we're\",\"we've\",'were',\"weren't\",'what',\"what's\",\n  'when',\"when's\",'where',\"where's\",'which','while','who',\"who's\",'whom','why',\n  \"why's\",'will','with',\"won't\",'would',\"wouldn't\",'you',\"you'd\",\"you'll\",\"you're\",\n  \"you've\",'your','yours','yourself','yourselves',\n  'also','even','well','back','way','much','many','like','already',\n  'around','another','come','first','find','go','going','good','great','help',\n  'keep','know','last','let','long','look','made','make','may','need','never',\n  'next','old','part','people','put','read','right','see','set','show','small',\n  'start','tell','thing','think','three','time','try','turn','two','used','using',\n  'via','week','work','world','year','years','really','actually','getting',\n  'thought','things','something','everything','nothing','every','someone',\n  'anyone','everyone','guys','hey','oh','yeah','nope','okay',\n  'please','thanks','thank','sorry','sure','maybe','probably','definitely',\n  'basically','literally','honestly','apparently','obviously','seriously'\n]);\n\nconst noiseWords = new Set([\n  'marketing','digital','business','online','brand','brands','content','strategy',\n  'data','customer','customers','company','companies','market','markets','growth',\n  'team','teams','product','products','service','services','industry','platform',\n  'technology','tech','report','reports','update','updates','news','latest','top',\n  'best','guide','trends','future','key','big','based','level','high','today',\n  'review','podcast','episode','article','post','blog','newsletter','weekly',\n  'daily','monthly','opinion','analysis','insight','insights','research','study',\n  'series','feature','features','announces','announced','launch','launches',\n  'launched','released','introducing','promote','looking','else','does','fun',\n  'free','question','thoughts','experience','advice','recommend','recommendation',\n  'suggestions','wondering','curious','feel','believe','tried','check','share',\n  'join','follow','subscribe','click','learn','watch','watching','video','photo',\n  'picture','image','meme','funny','love','hate','amazing','awesome','terrible',\n  'horrible','perfect','worst','game','super','bowl','ad','ads','commercial',\n  'vote','voting','election'\n]);\n\n\n// ============================================================\n// GENERIC BIGRAMS \u2014 too common to be meaningful signals\n// These appear across unrelated articles and cause false convergence\n// ============================================================\nconst GENERIC_BIGRAMS = new Set([\n  'open source','last year','next year','last week','next week',\n  'real time','real-time','long term','long-term','short term',\n  'end-to-end','day-to-day','year-over-year','month-over-month',\n  'full time','full-time','part time','part-time',\n  'third party','third-party','first party','first-party',\n  'small business','large scale','large-scale',\n  'case study','case studies','white paper',\n  'best practices','thought leadership',\n  'supply chain','value proposition',\n  'competitive advantage','market share',\n  'bottom line','top line','year old',\n]);\n\nconst redditNoise = [/\\[i will not promote\\]/gi, /\\[just for fun\\]/gi, /\\[unpopular opinion\\]/gi];\n\nfunction cleanWord(w) {\n  return w.replace(/[^a-zA-Z0-9'-]/g, '').toLowerCase();\n}\n\nfunction isUseful(word) {\n  if (word.length < 3) return false;\n  if (stopwords.has(word)) return false;\n  if (noiseWords.has(word)) return false;\n  if (/^\\d+$/.test(word)) return false;\n  return true;\n}\n\nfunction extractNgrams(title) {\n  let cleaned = title;\n  for (const pat of redditNoise) cleaned = cleaned.replace(pat, '');\n  const words = cleaned.split(/\\s+/).map(w => cleanWord(w)).filter(w => w.length > 0);\n  const ngrams = [];\n\n  for (let i = 0; i < words.length - 1; i++) {\n    const w1 = words[i], w2 = words[i+1];\n    if (isUseful(w1) && isUseful(w2)) {\n      const bigram = w1 + ' ' + w2;\n      if (!GENERIC_BIGRAMS.has(bigram)) {\n        ngrams.push(bigram);\n      }\n    }\n  }\n\n  for (let i = 0; i < words.length - 2; i++) {\n    const w1 = words[i], w2 = words[i+1], w3 = words[i+2];\n    const useful = [w1,w2,w3].filter(w => isUseful(w)).length;\n    if (useful >= 2 && w1.length >= 3 && w2.length >= 3 && w3.length >= 3) {\n      ngrams.push(w1 + ' ' + w2 + ' ' + w3);\n    }\n  }\n\n  return ngrams;\n}\n\n// ============================================================\n// Build topic map with pillar relevance\n// ============================================================\nconst topicMap = {};\n\nfor (const entry of entries) {\n  const category = entry.feed?.category?.title || 'Unknown';\n  const feed = entry.feed?.title || 'Unknown';\n  const title = entry.title || '';\n  const articlePillars = scorePillarRelevance(title);\n\n  const ngrams = extractNgrams(title);\n  const seen = new Set();\n\n  for (const ng of ngrams) {\n    if (seen.has(ng)) continue;\n    seen.add(ng);\n\n    if (!topicMap[ng]) {\n      topicMap[ng] = { count: 0, categories: [], feeds: [], articles: [], _pillarSets: {} };\n    }\n    topicMap[ng].count++;\n    if (!topicMap[ng].categories.includes(category)) topicMap[ng].categories.push(category);\n    if (!topicMap[ng].feeds.includes(feed)) topicMap[ng].feeds.push(feed);\n    topicMap[ng].articles.push({\n      title, url: entry.url, feed, category,\n      published: entry.published_at,\n      isReddit: (entry.url || '').includes('reddit.com'),\n      pillars: articlePillars\n    });\n\n    for (const [pillar, terms] of Object.entries(articlePillars)) {\n      if (!topicMap[ng]._pillarSets[pillar]) topicMap[ng]._pillarSets[pillar] = new Set();\n      for (const t of terms) topicMap[ng]._pillarSets[pillar].add(t);\n    }\n  }\n}\n\n// Also check if the topic text itself matches pillars\nfor (const [topic, data] of Object.entries(topicMap)) {\n  const topicPillars = scorePillarRelevance(topic);\n  for (const [pillar, terms] of Object.entries(topicPillars)) {\n    if (!data._pillarSets[pillar]) data._pillarSets[pillar] = new Set();\n    for (const t of terms) data._pillarSets[pillar].add(t);\n  }\n  // Convert Sets \u2192 arrays for JSON\n  data.pillarMatches = {};\n  for (const [p, s] of Object.entries(data._pillarSets)) {\n    data.pillarMatches[p] = [...s];\n  }\n  delete data._pillarSets;\n}\n\n// ============================================================\n// Cluster overlapping topics (>60% shared source articles)\n// ============================================================\nconst topicEntries = Object.entries(topicMap).filter(([_, d]) => d.count >= 2);\nconst clusters = [];\nconst assigned = new Set();\n\nfor (const [topic, data] of topicEntries) {\n  if (assigned.has(topic)) continue;\n\n  const cluster = { label: topic, members: [topic], data: JSON.parse(JSON.stringify(data)) };\n  assigned.add(topic);\n  const clusterUrls = new Set(data.articles.map(a => a.url));\n\n  for (const [other, otherData] of topicEntries) {\n    if (assigned.has(other)) continue;\n    const otherUrls = new Set(otherData.articles.map(a => a.url));\n    const intersection = [...clusterUrls].filter(u => otherUrls.has(u)).length;\n    const smaller = Math.min(clusterUrls.size, otherUrls.size);\n\n    if (smaller > 0 && intersection / smaller >= 0.6) {\n      cluster.members.push(other);\n      assigned.add(other);\n      // Merge articles, categories, feeds, pillars\n      for (const a of otherData.articles) {\n        if (!clusterUrls.has(a.url)) {\n          cluster.data.articles.push(a);\n          clusterUrls.add(a.url);\n        }\n      }\n      cluster.data.count = Math.max(cluster.data.count, otherData.count);\n      for (const cat of otherData.categories) {\n        if (!cluster.data.categories.includes(cat)) cluster.data.categories.push(cat);\n      }\n      for (const f of otherData.feeds) {\n        if (!cluster.data.feeds.includes(f)) cluster.data.feeds.push(f);\n      }\n      for (const [p, terms] of Object.entries(otherData.pillarMatches || {})) {\n        if (!cluster.data.pillarMatches[p]) cluster.data.pillarMatches[p] = [];\n        const existing = new Set(cluster.data.pillarMatches[p]);\n        for (const t of terms) if (!existing.has(t)) cluster.data.pillarMatches[p].push(t);\n      }\n    }\n  }\n\n  // Pick best label: prefer longest pillar-relevant topic\n  const relevant = cluster.members.filter(t => {\n    const tm = topicMap[t];\n    return tm && Object.keys(tm.pillarMatches || {}).length > 0;\n  });\n  if (relevant.length > 0) {\n    cluster.label = relevant.sort((a, b) => b.length - a.length)[0];\n  } else {\n    cluster.label = cluster.members.sort((a, b) => b.length - a.length)[0];\n  }\n\n  clusters.push(cluster);\n}\n\n// Build final clustered topic map\nconst clusteredTopicMap = {};\nfor (const c of clusters) {\n  const hasPillar = Object.keys(c.data.pillarMatches || {}).length > 0;\n  clusteredTopicMap[c.label] = {\n    ...c.data,\n    clusteredFrom: c.members,\n    hasPillarRelevance: hasPillar,\n    matchedPillars: Object.keys(c.data.pillarMatches || {})\n  };\n}\n\n// ============================================================\n// Historical baselines\n// ============================================================\nconst historicalTopics = {};\nfor (const dayData of history) {\n  for (const [topic, count] of Object.entries(dayData.topics || {})) {\n    if (!historicalTopics[topic]) historicalTopics[topic] = [];\n    historicalTopics[topic].push(count);\n  }\n}\nconst baselines = {};\nfor (const [topic, counts] of Object.entries(historicalTopics)) {\n  const avg = counts.reduce((a,b) => a+b, 0) / Math.max(counts.length, 1);\n  baselines[topic] = { avg: Math.round(avg * 100) / 100, days: counts.length };\n}\n\nconst todayTopics = {};\nfor (const [topic, data] of Object.entries(clusteredTopicMap)) {\n  todayTopics[topic] = data.count;\n}\n\nreturn [{\n  json: {\n    topicMap: clusteredTopicMap,\n    baselines,\n    todayTopics,\n    coldStart,\n    daysWithData,\n    totalArticles: entries.length,\n    totalCategories: [...new Set(entries.map(e => e.feed?.category?.title))].length,\n    entries,\n    pillarConfig: CONTENT_PILLARS\n  }\n}];\n"
+      },
+      "id": "dfi-topics",
+      "name": "Extract Topics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        920,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Detect signals: pillar-filtered convergence + volume spikes\n// v2: Topics must match \u22651 content pillar to become a signal\nconst { topicMap, baselines, todayTopics, coldStart, daysWithData, totalArticles, totalCategories, entries, pillarConfig } = $input.first().json;\n\nconst signals = [];\n\nfor (const [topic, data] of Object.entries(topicMap)) {\n  if (data.count < 2) continue;\n\n  // ===== PILLAR GATE: skip topics with no pillar relevance =====\n  if (!data.hasPillarRelevance) continue;\n\n  const uniqueCategories = data.categories.length;\n  const uniqueFeeds = data.feeds.length;\n  const baseline = baselines[topic];\n\n  let signalTypes = [];\n  let strength = 'Low';\n  let isSignal = false;\n  let baselineAvg = baseline ? baseline.avg : 0;\n  let volumeChange = 0;\n\n  // Cross-source convergence \u2014 require TOPICAL overlap, not just keyword match\n  // Articles must share pillar-level context, not just contain the same n-gram\n  const articlePillarSets = data.articles.map(a => new Set(Object.keys(a.pillars || {})));\n  let sharedPillarCount = 0;\n  if (articlePillarSets.length >= 2) {\n    // Check if articles share at least one pillar (beyond just the n-gram keyword)\n    const allPillars = articlePillarSets.reduce((union, s) => {\n      for (const p of s) union.add(p);\n      return union;\n    }, new Set());\n    for (const p of allPillars) {\n      const articlesWithPillar = articlePillarSets.filter(s => s.has(p)).length;\n      if (articlesWithPillar >= 2) sharedPillarCount++;\n    }\n  }\n\n  // Convergence tiers:\n  // Tier 1 (High): 3+ categories OR 5+ mentions\n  // Tier 2 (Medium): 2+ categories with shared pillar context OR 3+ feeds\n  // Tier 3 (Low): pillar-matched topic with 2+ mentions from any source mix\n  if (uniqueCategories >= 3 || data.count >= 5) {\n    signalTypes.push('cross-source convergence');\n    isSignal = true;\n    strength = 'High';\n  } else if (uniqueCategories >= 2 && (data.count >= 3 || sharedPillarCount > 0)) {\n    signalTypes.push('cross-source convergence');\n    isSignal = true;\n    strength = 'Medium';\n  } else if (uniqueFeeds >= 3 && data.count >= 3) {\n    signalTypes.push('cross-source convergence');\n    isSignal = true;\n    strength = 'Medium';\n  } else if (data.count >= 2 && Object.keys(data.pillarMatches || {}).length > 0) {\n    // Pillar-relevant topic with 2+ mentions - low-confidence but worth tracking\n    signalTypes.push('pillar-relevant mention');\n    isSignal = true;\n    strength = 'Low';\n  }\n\n  // Volume spike\n  if (baseline && baseline.avg > 0) {\n    volumeChange = Math.round(((data.count - baseline.avg) / baseline.avg) * 100);\n    if (data.count > 2 * baseline.avg) {\n      signalTypes.push('volume spike');\n      isSignal = true;\n      if (strength === 'Low') strength = 'Medium';\n      if (data.count > 3 * baseline.avg) strength = 'High';\n    }\n  } else if (coldStart && data.count >= 3) {\n    signalTypes.push('emerging (new topic)');\n    isSignal = true;\n    if (strength === 'Low') strength = 'Medium';\n  }\n\n  // Reddit presence\n  const redditArticles = data.articles.filter(a => a.isReddit);\n  data.hasReddit = redditArticles.length > 0;\n\n  if (!isSignal) continue;\n\n  // Map to LinkedIn content pillar\n  const matchedPillars = data.matchedPillars || [];\n  let contentSuggestion = 'Twitter thread';\n\n  if (matchedPillars.includes('AI & Automation')) {\n    contentSuggestion = data.count >= 4 ? 'Essay (Substack)' : 'LinkedIn post (Builder)';\n  } else if (matchedPillars.includes('E-Commerce & DTC') || matchedPillars.includes('Marketing & Growth')) {\n    contentSuggestion = data.count >= 4 ? 'Essay (Substack)' : 'LinkedIn post (Strategy)';\n  } else if (matchedPillars.includes('Leadership & Career')) {\n    contentSuggestion = 'LinkedIn post (Career)';\n  }\n\n  // Build rationale with pillar context\n  const pillarNames = matchedPillars\n    .map(p => (pillarConfig && pillarConfig[p]) ? pillarConfig[p].pillar : p)\n    .join(', ');\n\n  let rationale = `Relevant to: ${pillarNames}.`;\n  if (signalTypes.includes('cross-source convergence')) {\n    rationale += ` Appearing across ${uniqueCategories} categories and ${uniqueFeeds} feeds.`;\n  }\n  if (signalTypes.includes('volume spike')) {\n    rationale += ` Volume ${volumeChange > 0 ? '+' : ''}${volumeChange}% vs 7-day average.`;\n  }\n  if (signalTypes.includes('emerging (new topic)')) {\n    rationale += ` Emerging with ${data.count} mentions today.`;\n  }\n\n  signals.push({\n    topic, strength, types: signalTypes,\n    categories: data.categories, feeds: data.feeds,\n    count: data.count, baselineAvg, volumeChange,\n    articles: data.articles,\n    hasReddit: data.hasReddit || false,\n    contentSuggestion,\n    rationale: rationale.trim(),\n    matchedPillars,\n    pillarMatches: data.pillarMatches || {},\n    clusteredFrom: data.clusteredFrom || [topic]\n  });\n}\n\nconst strengthOrder = { 'High': 0, 'Medium': 1, 'Low': 2 };\nsignals.sort((a, b) => {\n  if (strengthOrder[a.strength] !== strengthOrder[b.strength]) {\n    return strengthOrder[a.strength] - strengthOrder[b.strength];\n  }\n  return b.count - a.count;\n});\n\n// Topic list: only pillar-relevant topics\nconst topicList = Object.entries(topicMap)\n  .filter(([_, d]) => d.count >= 2 && d.hasPillarRelevance)\n  .sort((a, b) => b[1].count - a[1].count)\n  .slice(0, 25)\n  .map(([topic, data]) => {\n    const bl = baselines[topic];\n    const pctChange = bl && bl.avg > 0\n      ? Math.round(((data.count - bl.avg) / bl.avg) * 100) : null;\n    return {\n      topic, count: data.count,\n      uniqueSources: data.feeds.length,\n      pctChange,\n      pillars: data.matchedPillars\n    };\n  });\n\nreturn [{\n  json: {\n    signals, topicList, topicMap, todayTopics, baselines,\n    coldStart, daysWithData, totalArticles, totalCategories,\n    entries, pillarConfig\n  }\n}];\n"
+      },
+      "id": "dfi-detect",
+      "name": "Detect Signals",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1140,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract Reddit URLs from signals for HTTP Request node\n// v2: Uses URL-keyed mapping instead of index-based for robustness\nconst data = $input.first().json;\nconst { signals } = data;\n\nconst redditUrls = [];\nfor (const signal of signals) {\n  for (const article of signal.articles) {\n    if (article.isReddit && article.url) {\n      let jsonUrl = article.url.replace(/\\/+$/, '');\n      if (!jsonUrl.endsWith('.json')) jsonUrl += '.json';\n      redditUrls.push({ jsonUrl, originalUrl: article.url, signalTopic: signal.topic });\n    }\n  }\n}\n\nconst toFetch = redditUrls.slice(0, 10);\n\n// Store URL mapping keyed by jsonUrl for reliable merge\nconst staticData = $getWorkflowStaticData('global');\nstaticData._redditUrlMap = {};\nfor (const u of toFetch) {\n  staticData._redditUrlMap[u.jsonUrl] = u.originalUrl;\n}\n\nif (toFetch.length === 0) {\n  return [{ json: { _noReddit: true } }];\n}\n\nreturn toFetch.map(item => ({\n  json: { jsonUrl: item.jsonUrl, _noReddit: false, _originalUrl: item.originalUrl }\n}));\n"
+      },
+      "id": "dfi-reddit-prep",
+      "name": "Prepare Reddit URLs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1360,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": ""
+          },
+          "conditions": [
+            {
+              "id": "has-urls",
+              "leftValue": "={{ $json._noReddit }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "notEqual"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "dfi-reddit-check",
+      "name": "Has Reddit URLs?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1520,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.jsonUrl }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "n8n-signal-detection/1.0"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "dfi-reddit-fetch",
+      "name": "Fetch Reddit Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1680,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Merge Reddit engagement data back into signals\n// v2: URL-keyed lookup (not index-based) for reliability\nconst originalData = $('Detect Signals').first().json;\nconst { signals } = originalData;\nconst items = $input.all();\nconst redditData = {};\n\n// Get URL mapping from static data\nconst staticData = $getWorkflowStaticData('global');\nconst urlMap = staticData._redditUrlMap || {};\ndelete staticData._redditUrlMap;\n\nfor (let i = 0; i < items.length; i++) {\n  if (items[i].json._noReddit) continue;\n\n  // Try to find original URL: first from static map, then from item metadata\n  let originalUrl = null;\n  const itemJson = items[i].json;\n\n  // The HTTP Request node may have replaced the JSON, so check static map by index fallback\n  // But prefer URL-keyed lookup if we can identify which request this was\n  if (itemJson._originalUrl) {\n    originalUrl = itemJson._originalUrl;\n  } else {\n    // Fallback: try index-based from the URL map values\n    const mapValues = Object.values(urlMap);\n    if (i < mapValues.length) originalUrl = mapValues[i];\n  }\n\n  if (!originalUrl) continue;\n\n  try {\n    const json = itemJson;\n    const listing = Array.isArray(json) ? json : null;\n    if (listing && listing[0]?.data?.children?.[0]?.data) {\n      const post = listing[0].data.children[0].data;\n      redditData[originalUrl] = {\n        score: post.score || 0,\n        comments: post.num_comments || 0,\n        upvoteRatio: post.upvote_ratio || 0,\n        highEngagement: (post.num_comments >= 50 || post.score >= 100)\n      };\n    }\n  } catch (e) {}\n}\n\nfor (const signal of signals) {\n  let hasHighEngagement = false;\n  for (const article of signal.articles) {\n    if (article.isReddit && redditData[article.url]) {\n      const rd = redditData[article.url];\n      article.redditScore = rd.score;\n      article.redditComments = rd.comments;\n      article.redditUpvoteRatio = rd.upvoteRatio;\n      article.highEngagement = rd.highEngagement;\n      if (rd.highEngagement) hasHighEngagement = true;\n    }\n  }\n  if (hasHighEngagement) {\n    if (!signal.types.includes('Reddit engagement')) {\n      signal.types.push('Reddit engagement');\n    }\n    if (signal.strength === 'Low') signal.strength = 'Medium';\n    signal.rationale += ' High Reddit engagement signals strong community interest.';\n  }\n}\n\nreturn [{ json: { ...originalData, signals, redditData } }];\n"
+      },
+      "id": "dfi-reddit-merge",
+      "name": "Merge Reddit Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1800,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Score signal impact with pillar relevance factor\n// v2: Replaces broken recency factor with pillar relevance (2x weight)\nconst data = $input.first().json;\nconst { signals, totalCategories } = data;\n\nfor (const signal of signals) {\n  // Factor 1: Source Diversity (0-10, weight 1.5x) \u2014 max 15\n  const diversityRaw = (signal.categories.length / Math.max(totalCategories, 1)) * 10;\n  const diversity = Math.min(Math.round(diversityRaw * 100) / 100, 10);\n\n  // Factor 2: Volume vs Baseline (0-10, weight 1x) \u2014 max 10\n  let volume = 0;\n  if (signal.baselineAvg > 0) {\n    volume = Math.min((signal.count / signal.baselineAvg), 10);\n  } else {\n    volume = Math.min(signal.count * 2, 10);\n  }\n  volume = Math.round(volume * 100) / 100;\n\n  // Factor 3: Reddit Engagement (0-10, weight 0.5x) \u2014 max 5\n  let reddit = 0;\n  let maxRedditComments = 0;\n  let maxRedditUpvotes = 0;\n  for (const article of signal.articles) {\n    if (article.redditComments !== undefined) {\n      maxRedditComments = Math.max(maxRedditComments, article.redditComments);\n    }\n    if (article.redditScore !== undefined) {\n      maxRedditUpvotes = Math.max(maxRedditUpvotes, article.redditScore);\n    }\n  }\n  reddit = Math.round((Math.min(maxRedditComments / 100, 1) * 5 + Math.min(maxRedditUpvotes / 100, 1) * 5) * 100) / 100;\n\n  // Factor 4: Pillar Relevance (0-10, weight 2x) \u2014 max 20\n  // More pillars matched + more terms matched = higher relevance\n  const pillarCount = (signal.matchedPillars || []).length;\n  const termCount = Object.values(signal.pillarMatches || {})\n    .reduce((sum, terms) => sum + (Array.isArray(terms) ? terms.length : 0), 0);\n  const pillarScore = Math.min(pillarCount * 3, 6);    // 1 pillar=3, 2+=6\n  const termScore = Math.min(termCount * 0.8, 4);      // more term matches = higher\n  const relevance = Math.min(Math.round((pillarScore + termScore) * 100) / 100, 10);\n\n  // Weighted impact score (max: 15 + 10 + 5 + 20 = 50)\n  const impactScore = Math.round(\n    ((diversity * 1.5) + (volume * 1) + (reddit * 0.5) + (relevance * 2)) * 100\n  ) / 100;\n\n  signal.impactScore = impactScore;\n  signal.scoreBreakdown = {\n    diversity: { raw: diversity, weighted: Math.round(diversity * 1.5 * 100) / 100 },\n    volume: { raw: volume, weighted: Math.round(volume * 1 * 100) / 100 },\n    reddit: { raw: reddit, weighted: Math.round(reddit * 0.5 * 100) / 100 },\n    relevance: { raw: relevance, weighted: Math.round(relevance * 2 * 100) / 100 }\n  };\n}\n\nsignals.sort((a, b) => b.impactScore - a.impactScore);\n\nreturn [{ json: { ...data, signals } }];\n"
+      },
+      "id": "dfi-score-impact",
+      "name": "Score Signal Impact",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2000,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Generate content brief stubs with AI-enriched angles + strategy scoring\n// v5: Adds min impact score floor (15) before hybrid threshold\n// Falls back to rule-based pillar angles when Gemini was skipped\nconst fs = require('fs');\nconst data = $input.first().json;\nconst { signals, pillarConfig } = data;\nconst today = new Date().toLocaleDateString('en-CA');\nconst briefsDir = '/home/node/your-vault/01-Inbox/content-signals/briefs';\n\nif (!fs.existsSync(briefsDir)) {\n  fs.mkdirSync(briefsDir, { recursive: true });\n}\n\n// ===== STRATEGY FILTER: only consider brief-worthy signals =====\n// Hard floor: impactScore must be >= 15 regardless of other criteria\nconst MIN_IMPACT_SCORE = 10;\nconst briefWorthy = signals.filter(s => s.briefWorthy !== false && s.impactScore >= MIN_IMPACT_SCORE);\nconst filtered = signals.filter(s => s.briefWorthy === false || s.impactScore < MIN_IMPACT_SCORE);\n\n// Hybrid threshold: top 3 OR score >= 20 (among brief-worthy only)\nconst top3 = briefWorthy.slice(0, 3);\nconst aboveThreshold = briefWorthy.filter(s => s.impactScore >= 20);\nconst selected = top3.length >= aboveThreshold.length ? top3 : aboveThreshold;\nconst seen = new Set();\nconst finalSignals = [];\nfor (const s of selected) {\n  if (!seen.has(s.topic)) { seen.add(s.topic); finalSignals.push(s); }\n}\n\nconst generatedBriefs = [];\n\nfor (const s of finalSignals) {\n  if (s.impactScore === 0) continue;\n\n  const slug = (s.aiTopicName || s.topic).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').substring(0, 50);\n  const filename = `${today}-${slug}.md`;\n\n  let contentType = s.contentSuggestion || 'Twitter thread';\n  let route = 'twitter-thread';\n  if (contentType.includes('Essay') || contentType.includes('Substack')) {\n    route = 'essay';\n  } else if (contentType.includes('LinkedIn')) {\n    route = 'linkedin';\n  }\n\n  // Score breakdown table\n  const sb = s.scoreBreakdown;\n  let scoreTable = '| Factor | Raw (0-10) | Weight | Weighted |\\n';\n  scoreTable += '|--------|-----------|--------|----------|\\n';\n  scoreTable += `| Source Diversity | ${sb.diversity.raw} | 1.5x | ${sb.diversity.weighted} |\\n`;\n  scoreTable += `| Volume vs Baseline | ${sb.volume.raw} | 1x | ${sb.volume.weighted} |\\n`;\n  scoreTable += `| Reddit Engagement | ${sb.reddit.raw} | 0.5x | ${sb.reddit.weighted} |\\n`;\n  scoreTable += `| Pillar Relevance | ${sb.relevance.raw} | 2x | ${sb.relevance.weighted} |\\n`;\n\n  // Strategy fit section (from Gemini)\n  let strategySection = '';\n  if (s.strategyFit != null) {\n    strategySection = `## Strategy Fit\\n\\n`;\n    strategySection += `| Metric | Value |\\n`;\n    strategySection += `|--------|-------|\\n`;\n    strategySection += `| Strategy Fit Score | **${s.strategyFit} / 10** |\\n`;\n    strategySection += `| Brief Worthy | ${s.briefWorthy ? 'Yes' : 'No'} |\\n`;\n    if (s.fitRationale) {\n      strategySection += `\\n> ${s.fitRationale}\\n`;\n    }\n    strategySection += '\\n';\n  }\n\n  // Key articles\n  const seenUrls = new Set();\n  let articlesSection = '';\n  for (const a of s.articles) {\n    if (seenUrls.has(a.url)) continue;\n    seenUrls.add(a.url);\n    let line = `- [${a.title}](${a.url}) -- *${a.feed}*`;\n    if (a.redditScore !== undefined) {\n      line += ` (${a.redditScore} upvotes, ${a.redditComments} comments)`;\n    }\n    articlesSection += line + '\\n';\n  }\n\n  // Agent chain\n  let agentChain = '';\n  if (route === 'essay') {\n    agentChain = '1. research-analyst (opus) -> 2. content-marketer (sonnet) -> 3. editor-in-chief (opus) -> 4. social-amplifier (sonnet)';\n  } else if (route === 'linkedin') {\n    agentChain = '1. content-marketer (sonnet) -> 2. editor-in-chief (opus) -> 3. social-amplifier (sonnet)';\n  } else {\n    agentChain = '1. content-marketer (sonnet) -> 2. social-amplifier (sonnet)';\n  }\n\n  // Platform constraints\n  let constraints = '';\n  if (route === 'essay') {\n    constraints = '- Long-form (1500-3000 words)\\n- Substack newsletter format\\n- Include data/examples from key articles\\n- Personal angle + industry analysis';\n  } else if (route === 'linkedin') {\n    constraints = '- 1300 char limit (optimal 800-1200)\\n- Hook in first 2 lines\\n- Line breaks for readability\\n- End with question or CTA\\n- 3-5 hashtags';\n  } else {\n    constraints = '- 280 char per tweet\\n- 3-8 tweets in thread\\n- Hook tweet must stand alone\\n- Include 1-2 links in thread\\n- End with summary + CTA';\n  }\n\n  // ===== ANGLE SUGGESTIONS: AI-enriched or rule-based fallback =====\n  const matchedPillars = s.matchedPillars || [];\n  const pillarNames = matchedPillars\n    .map(p => (pillarConfig && pillarConfig[p]) ? pillarConfig[p].pillar : p);\n\n  let angles = [];\n  let hookDraft = '';\n  let calendarSlot = '';\n  let displayTopic = s.topic;\n\n  if (s.enrichedByAI && s.aiAngles && s.aiAngles.length > 0) {\n    // Use Gemini-generated content\n    displayTopic = s.aiTopicName || s.topic;\n    angles = s.aiAngles.map((a, i) => `**Angle ${i+1}:** ${a}`);\n    hookDraft = s.aiHook || '';\n    calendarSlot = s.aiLinkedinDay ? `${s.aiLinkedinDay} (AI-suggested)` : '';\n  } else {\n    // Rule-based fallback\n    if (matchedPillars.includes('AI & Automation')) {\n      angles.push('**Builder angle:** What does this mean for people actually building with AI tools? What\\'s the implementation reality vs. the hype? Connect to your own Claude Code / MCP / agent work.');\n      angles.push('**Infrastructure angle:** How should marketing teams think about this technically? What does the stack look like?');\n    }\n    if (matchedPillars.includes('E-Commerce & DTC')) {\n      angles.push('**Operator angle:** What are the real P&L implications? What patterns have you seen across 12+ years and 8 companies?');\n      angles.push('**Unit economics angle:** How does this affect CAC/LTV/AOV? What\\'s the math that nobody\\'s showing?');\n    }\n    if (matchedPillars.includes('Marketing & Growth')) {\n      angles.push('**Strategy angle:** What should VPs and Directors actually do about this? What\\'s the operational playbook?');\n      angles.push('**Stack angle:** How does this connect to Klaviyo, Shopify, GA4? What changes in the martech layer?');\n    }\n    if (matchedPillars.includes('Leadership & Career')) {\n      angles.push('**Real talk angle:** What\\'s the honest perspective that nobody on LinkedIn is saying? What did you see firsthand?');\n      angles.push('**Org impact angle:** How does this reshape marketing teams, hiring, or the role of the marketing leader?');\n    }\n  }\n\n  // Fallback calendar slot from pillars if AI didn't provide one\n  if (!calendarSlot) {\n    if (matchedPillars.includes('AI & Automation')) {\n      calendarSlot = 'Monday (Builder post)';\n    } else if (matchedPillars.includes('E-Commerce & DTC') || matchedPillars.includes('Marketing & Growth')) {\n      calendarSlot = 'Tuesday (Strategy post)';\n    } else if (matchedPillars.includes('Leadership & Career')) {\n      calendarSlot = 'Wednesday (Career post)';\n    }\n  }\n\n  const anglesSection = angles.length > 0\n    ? angles.join('\\n\\n')\n    : 'No specific angle suggestions \u2014 consider what unique perspective your experience brings to this topic.';\n\n  const hookSection = hookDraft\n    ? `## Draft Hook\\n\\n> ${hookDraft}\\n`\n    : '';\n\n  const enrichedTag = s.enrichedByAI ? 'ai-enriched' : 'rule-based';\n\n  const brief = `---\nsignal_date: ${today}\ntopic: ${displayTopic}\noriginal_ngram: ${s.topic}\nimpact_score: ${s.impactScore}\nstrategy_fit: ${s.strategyFit || 'n/a'}\ncontent_type: ${contentType}\nroute: ${route}\nmatched_pillars: [${matchedPillars.join(', ')}]\nlinkedin_slot: ${calendarSlot}\nenrichment: ${enrichedTag}\nstatus: stub\n---\n\n# Content Brief: ${displayTopic}\n\n## Signal Summary\n\n| Metric | Value |\n|--------|-------|\n| Impact Score | **${s.impactScore} / 50** |\n| Strategy Fit | **${s.strategyFit != null ? s.strategyFit + ' / 10' : 'n/a'}** |\n| Strength | ${s.strength} |\n| Signal Types | ${s.types.join(', ')} |\n| Matched Pillars | **${pillarNames.join(', ')}** |\n| Sources | ${s.categories.join(', ')} (${s.feeds.length} feeds) |\n| Volume | ${s.count} mentions${s.baselineAvg > 0 ? ' (baseline: ' + s.baselineAvg + '/day)' : ''} |\n\n${strategySection}## Score Breakdown\n\n${scoreTable}\n\n## Key Articles\n\n${articlesSection}\n\n## Suggested Angles\n\n${anglesSection}\n\n${hookSection}\n## Content Recommendation\n\n- **Type:** ${contentType}\n- **Route:** \\`${route}\\`\n- **LinkedIn Slot:** ${calendarSlot || 'Flexible'}\n- **Agent Chain:** ${agentChain}\n\n## Platform Constraints\n\n${constraints}\n\n## Why This Signal Matters\n\n${s.rationale}\n\n## Usage\n\nRun in Claude Code:\n\\`\\`\\`\n/write-from-signal ${s.topic}\n\\`\\`\\`\n`;\n\n  fs.writeFileSync(`${briefsDir}/${filename}`, brief, 'utf8');\n  generatedBriefs.push({\n    filename, topic: displayTopic, originalTopic: s.topic,\n    impactScore: s.impactScore, strategyFit: s.strategyFit,\n    route, contentType, matchedPillars,\n    path: `${briefsDir}/${filename}`\n  });\n}\n\nreturn [{ json: {\n  ...data, generatedBriefs, briefsDir,\n  briefWorthyCount: briefWorthy.length,\n  filteredByStrategy: filtered.length,\n  filteredSignals: filtered.map(s => ({\n    topic: s.aiTopicName || s.topic,\n    strategyFit: s.strategyFit,\n    disqualifyReason: s.disqualifyReason || '',\n    fitRationale: s.fitRationale || ''\n  }))\n} }];\n"
+      },
+      "id": "dfi-brief-stubs",
+      "name": "Generate Content Brief Stubs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2400,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Generate the signals brief markdown\n// v3: Shows strategy fit scores, separates brief-worthy from filtered signals\nconst { signals, topicList, coldStart, daysWithData, totalArticles, totalCategories, generatedBriefs, filteredSignals, pillarConfig, geminiEnriched, briefWorthyCount, filteredByStrategy } = $input.first().json;\nconst today = new Date().toLocaleDateString('en-CA');\n\nlet md = `# Content Signals \u2014 ${today}\\n`;\nmd += `**${signals.length} signals detected | ${totalCategories} categories scanned | ${totalArticles} articles analyzed**\\n`;\n\n// Strategy scoring summary\nif (geminiEnriched) {\n  const worthyCount = briefWorthyCount || signals.filter(s => s.briefWorthy !== false).length;\n  const filtCount = filteredByStrategy || signals.filter(s => s.briefWorthy === false).length;\n  md += `**Strategy scoring:** ${worthyCount} brief-worthy, ${filtCount} filtered out`;\n  if (filtCount > 0) md += ` (see [Filtered by Strategy](#filtered-by-strategy) below)`;\n  md += `\\n`;\n}\nmd += '\\n';\n\nif (coldStart) {\n  md += `> **Note:** Baseline is building (${daysWithData}/7 days of history). Volume spike detection is relaxed \u2014 new topics with 3+ mentions are flagged as emerging.\\n\\n`;\n}\n\n// Brief-worthy signals\nconst briefWorthySignals = signals.filter(s => s.briefWorthy !== false);\nconst filteredOutSignals = signals.filter(s => s.briefWorthy === false);\n\nif (briefWorthySignals.length === 0 && filteredOutSignals.length === 0) {\n  md += `No pillar-relevant signals detected today. Topics were found but none matched your content pillars (AI & Automation, E-Commerce, Marketing & Growth, Leadership & Career).\\n\\n`;\n} else if (briefWorthySignals.length === 0) {\n  md += `No signals passed strategy scoring today. ${filteredOutSignals.length} signal(s) were detected but didn't meet the brief-worthy threshold (strategy fit >= 6).\\n\\n`;\n} else {\n  for (let i = 0; i < briefWorthySignals.length; i++) {\n    const s = briefWorthySignals[i];\n    const pillarNames = (s.matchedPillars || [])\n      .map(p => (pillarConfig && pillarConfig[p]) ? pillarConfig[p].pillar : p);\n\n    const displayName = s.aiTopicName || s.topic;\n    md += `## Signal ${i + 1}: ${displayName}\\n`;\n    if (s.aiTopicName && s.aiTopicName !== s.topic) {\n      md += `*Detected as: \"${s.topic}\"*\\n`;\n    }\n    md += `**Strength:** ${s.strength} | **Impact Score:** ${s.impactScore} / 50`;\n    if (s.strategyFit != null) {\n      md += ` | **Strategy Fit:** ${s.strategyFit} / 10`;\n    }\n    md += '\\n';\n    md += `**Type:** ${s.types.join(' / ')}\\n`;\n    md += `**Pillars:** ${pillarNames.join(', ')}\\n`;\n    md += `**Sources:** ${s.categories.join(', ')} (${s.feeds.join(', ')})\\n`;\n\n    let volumeStr = `${s.count} mentions`;\n    if (s.baselineAvg > 0) volumeStr += ` (baseline: ${s.baselineAvg}/day)`;\n    md += `**Volume:** ${volumeStr}\\n`;\n\n    if (s.fitRationale) {\n      md += `**Strategy rationale:** ${s.fitRationale}\\n`;\n    }\n    if (s.aiLinkedinDay) {\n      md += `**LinkedIn slot:** ${s.aiLinkedinDay}\\n`;\n    }\n\n    md += `**Key articles:**\\n`;\n    const seen = new Set();\n    for (const a of s.articles) {\n      if (seen.has(a.url)) continue;\n      seen.add(a.url);\n      let line = `- [${a.title}](${a.url}) \u2014 *${a.feed}*`;\n      if (a.redditScore !== undefined) {\n        line += ` (${a.redditScore} upvotes, ${a.redditComments} comments)`;\n        if (a.highEngagement) line += ' \ud83d\udd25';\n      }\n      md += line + '\\n';\n    }\n\n    md += `**Content:** ${s.contentSuggestion}\\n`;\n    md += `**Why:** ${s.rationale}\\n`;\n    if (s.aiHook) {\n      md += `**Draft hook:** \"${s.aiHook}\"\\n`;\n    }\n    md += '\\n';\n  }\n}\n\nif (generatedBriefs && generatedBriefs.length > 0) {\n  md += `## Content Briefs Generated\\n\\n`;\n  md += `| Topic | Impact | Strategy Fit | Pillars | Route | Brief |\\n`;\n  md += `|-------|-------:|:------------:|---------|-------|-------|\\n`;\n  for (const b of generatedBriefs) {\n    const pillars = (b.matchedPillars || []).join(', ');\n    const fit = b.strategyFit != null ? `${b.strategyFit}/10` : 'n/a';\n    md += `| ${b.topic} | ${b.impactScore} | ${fit} | ${pillars} | \\`${b.route}\\` | [[briefs/${b.filename}]] |\\n`;\n  }\n  md += `\\n> **Next step:** Run \\`/write-from-signal [topic]\\` in Claude Code to start the content pipeline.\\n\\n`;\n}\n\n// Filtered by strategy section\nif (filteredOutSignals.length > 0 || (filteredSignals && filteredSignals.length > 0)) {\n  md += `## Filtered by Strategy\\n\\n`;\n  md += `These signals were detected but scored below the brief-worthy threshold (strategy fit < 6).\\n\\n`;\n  md += `| Signal | Strategy Fit | Reason |\\n`;\n  md += `|--------|:------------:|--------|\\n`;\n\n  // Use filteredSignals from brief-stubs if available, else fall back to raw signals\n  const toShow = (filteredSignals && filteredSignals.length > 0)\n    ? filteredSignals\n    : filteredOutSignals.map(s => ({\n        topic: s.aiTopicName || s.topic,\n        strategyFit: s.strategyFit,\n        disqualifyReason: s.disqualifyReason || '',\n        fitRationale: s.fitRationale || ''\n      }));\n\n  for (const f of toShow) {\n    const fit = f.strategyFit != null ? `${f.strategyFit}/10` : 'n/a';\n    const reason = f.disqualifyReason || f.fitRationale || 'Below threshold';\n    md += `| ${f.topic} | ${fit} | ${reason} |\\n`;\n  }\n  md += '\\n';\n}\n\nif (topicList && topicList.length > 0) {\n  md += `## Today's Topic Map (Pillar-Relevant Only)\\n\\n`;\n  md += `| Topic | Count | Sources | Pillars | % Change |\\n`;\n  md += `|-------|------:|:-------:|---------|--------:|\\n`;\n  for (const t of topicList) {\n    const pctStr = t.pctChange !== null ? `${t.pctChange > 0 ? '+' : ''}${t.pctChange}%` : 'new';\n    const pillars = (t.pillars || []).join(', ');\n    md += `| ${t.topic} | ${t.count} | ${t.uniqueSources} | ${pillars} | ${pctStr} |\\n`;\n  }\n  md += '\\n';\n}\n\nreturn [{\n  json: {\n    ...$input.first().json,\n    markdown: md,\n    filename: `${today}-signals.md`\n  }\n}];\n"
+      },
+      "id": "dfi-brief",
+      "name": "Generate Signals Brief",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2600,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Save the markdown brief and the JSON history data\nconst fs = require('fs');\nconst { markdown, filename, todayTopics, generatedBriefs } = $input.first().json;\nconst today = new Date().toLocaleDateString('en-CA');\n\nconst signalsDir = '/home/node/your-vault/01-Inbox/content-signals';\nconst historyDir = signalsDir + '/history';\n\nif (!fs.existsSync(signalsDir)) fs.mkdirSync(signalsDir, { recursive: true });\nif (!fs.existsSync(historyDir)) fs.mkdirSync(historyDir, { recursive: true });\n\nconst briefPath = `${signalsDir}/${filename}`;\nfs.writeFileSync(briefPath, markdown, 'utf8');\n\nconst historyPath = `${historyDir}/${today}-topics.json`;\nconst historyData = {\n  date: today,\n  topics: todayTopics,\n  timestamp: new Date().toISOString()\n};\nfs.writeFileSync(historyPath, JSON.stringify(historyData, null, 2), 'utf8');\n\nreturn [{\n  json: {\n    briefPath,\n    historyPath,\n    signalCount: $input.first().json.signals?.length || 0,\n    generatedBriefs: generatedBriefs || [],\n    success: true\n  }\n}];"
+      },
+      "id": "dfi-save-signals",
+      "name": "Save Brief & History",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2800,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepare Slack notification payload with sprint assignments, urgency alerts, + ExecPR flags\nconst data = $input.first().json;\nconst { generatedBriefs, sprintAssignments, urgencyAlerts, execprFlagCount, signalCount } = data;\n\nif (!generatedBriefs || generatedBriefs.length === 0) {\n  return [];  // Stop here \u2014 nothing to notify\n}\n\nconst today = new Date().toLocaleDateString('en-US', {\n  month: 'short', day: 'numeric', timeZone: 'America/New_York'\n});\n\nconst totalArticles = data.totalCount || signalCount || 0;\nconst catCount = data.categoryCount || 0;\n\nlet text = ':newspaper: *Daily Feed Intelligence \u2014 ' + today + '*\\n';\ntext += totalArticles + ' articles | ' + catCount + ' categories | ' + generatedBriefs.length + ' brief' + (generatedBriefs.length !== 1 ? 's' : '') + ' generated\\n\\n';\n\n// --- URGENCY ALERTS (above sprint assignments) ---\nif (urgencyAlerts && urgencyAlerts.length > 0) {\n  for (const alert of urgencyAlerts) {\n    if (alert.urgency === 'breaking') {\n      text += ':rotating_light: *BREAKING SIGNAL* :rotating_light:\\n';\n      text += '*\"' + alert.topic + '\"*\\n';\n      text += 'Impact: ' + alert.impactScore + '/50 | Strategy fit: ' + alert.strategyFit + '/10 | Sources: ' + (alert.sourceCount || '?') + '\\n';\n      text += 'Assigned: ' + alert.assignedSlot + ' (' + alert.assignedSprint + ')\\n';\n      if (alert.occupant) {\n        text += ':warning: *Would displace:* \"' + alert.occupant.topic + '\" (' + alert.occupant.piece_id + ', status: ' + alert.occupant.status + ')\\n';\n      }\n      text += ':point_right: ' + alert.recommendation + '\\n\\n';\n    } else if (alert.urgency === 'high-signal') {\n      text += ':fire: *High-Signal:* \"' + alert.topic + '\" (impact ' + alert.impactScore + '/50, fit ' + alert.strategyFit + '/10)\\n';\n      text += 'Assigned: ' + alert.assignedSlot + ' (' + alert.assignedSprint + ')';\n      if (alert.occupant) {\n        text += ' \u2014 slot had: \"' + alert.occupant.topic + '\" (' + alert.occupant.piece_id + ')';\n      }\n      text += '\\n';\n      text += ':point_right: ' + alert.recommendation + '\\n\\n';\n    }\n  }\n}\n\n// Sprint auto-assignments\nif (sprintAssignments && sprintAssignments.length > 0) {\n  text += ':calendar: *Sprint Auto-Assigned:*\\n';\n  for (const a of sprintAssignments) {\n    const briefRelPath = '01-Inbox/content-signals/briefs/' + a.filename;\n    const encodedPath = encodeURIComponent(briefRelPath).replace(/%2F/g, '/');\n    const obsLink = 'obsidian://open?vault=your-vault&file=' + encodedPath;\n    const urgencyTag = a.urgency === 'breaking' ? ' :rotating_light:' : a.urgency === 'high-signal' ? ' :fire:' : '';\n    text += '\\u2022 ' + a.pieceId + ' (' + a.day + ') _' + a.pillarName + '_: \\\"' + a.topic + '\\\" [' + a.route + ']' + urgencyTag + '\\n';\n    text += '  Brief: <' + obsLink + '|' + a.filename + '>\\n';\n  }\n  text += '\\n';\n} else {\n  text += ':calendar: Sprint Auto-Assigned: 0 (no briefs matched pillars)\\n\\n';\n}\n\n// ExecPR flags\ntext += ':brain: *ExecPR Signals:* ' + (execprFlagCount || 0) + ' flagged\\n\\n';\n\ntext += 'Drafts ready by ~7:30 AM ET.';\n\nreturn [{\n  json: { body: text, briefCount: generatedBriefs.length }\n}];"
+      },
+      "id": "dfi-format-notify",
+      "name": "Format Notification",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3400,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://slack.com/api/chat.postMessage",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SLACK_BOT_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json; charset=utf-8"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ \"channel\": $env.SLACK_CONTENT_CHANNEL_ID, \"blocks\": [ { \"type\": \"section\", \"text\": { \"type\": \"mrkdwn\", \"text\": \":memo: *Content Briefs Ready*\\n\" + $json.body } } ] }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "dfi-ntfy-send",
+      "name": "Slack \u2014 Content Briefs Ready",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3600,
+        200
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "dfi-noop",
+      "name": "No New Entries",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        700,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format error notification for pipeline failure\nconst errorData = $input.first().json;\nconst today = new Date().toLocaleDateString('en-CA');\nconst time = new Date().toLocaleTimeString('en-US', {\n  hour: '2-digit', minute: '2-digit', timeZone: 'America/New_York'\n});\n\nreturn [{\n  json: {\n    body: today + ' ' + time + ' ET\\n' + (errorData.message || errorData.error || 'Unknown error \u2014 check Miniflux status') + '\\n\\nCheck: Is Miniflux running? Is the API token valid?'\n  }\n}];"
+      },
+      "id": "dfi-error-format",
+      "name": "Format Pipeline Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://slack.com/api/chat.postMessage",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SLACK_BOT_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json; charset=utf-8"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ \"channel\": $env.SLACK_CONTENT_CHANNEL_ID, \"blocks\": [ { \"type\": \"section\", \"text\": { \"type\": \"mrkdwn\", \"text\": \":warning: *Daily Feed Intelligence \u2014 Error*\\n\" + $json.body } } ] }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "dfi-error-notify",
+      "name": "Slack \u2014 Pipeline Error",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        660,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepare Gemini API request for signal enrichment + strategy scoring\n// v2: Reads pipeline-scoring-guide.md for strategy fit evaluation\n// Sends signals + strategy context to Gemini Flash\nconst fs = require('fs');\nconst data = $input.first().json;\nconst { signals } = data;\n\nconst toEnrich = signals.filter(s => s.impactScore > 0).slice(0, 8);\n\nif (toEnrich.length === 0) {\n  return [{ json: { ...data, _geminiSkipped: true, _geminiReason: 'no signals to enrich' } }];\n}\n\n// API key injected by HTTP Request node via $env expression \u2014 not accessible in Code node sandbox\n\n// Read strategy scoring guide from vault\nlet scoringGuide = '';\nconst guidePath = '/home/node/your-vault/02-Projects/linkedin-content-strategy/pipeline-scoring-guide.md';\ntry {\n  if (fs.existsSync(guidePath)) {\n    scoringGuide = fs.readFileSync(guidePath, 'utf8');\n    // Strip YAML frontmatter\n    scoringGuide = scoringGuide.replace(/^---[\\s\\S]*?---\\n/, '').trim();\n  }\n} catch (e) {\n  // If file can't be read, continue with minimal context\n  scoringGuide = '';\n}\n\n// Build signal descriptions\nconst signalDescs = toEnrich.map((s, i) => {\n  const uniqueTitles = [...new Set(s.articles.map(a => a.title))].slice(0, 5);\n  const pillars = (s.matchedPillars || []).join(', ');\n  return `Signal ${i+1}: \"${s.topic}\"\n  Keyword pillars: ${pillars}\n  Sources: ${s.categories.join(', ')} (${s.count} mentions, ${s.feeds.length} feeds)\n  Articles:\n${uniqueTitles.map(t => '    - ' + t).join('\\n')}`;\n}).join('\\n\\n');\n\n// Build prompt with strategy context\nlet prompt = '';\n\nif (scoringGuide) {\n  prompt = `You are evaluating content signals for Your Name's LinkedIn content strategy.\n\n## YOUR NAME'S VOICE\n\nDirect, specific, unsentimental. Executive clarity with operator detail.\n\nRules for writing hooks in her voice:\n- Ground opinions in experience: \"Where I've seen this fail...\" not \"I believe...\"\n- Short declarative sentences to land a point. \"It hurt a little.\" / \"That's not strategy.\"\n- Contrarian but not combative \u2014 agree first, then push back\n- Personality through specificity, not exclamation marks\n- Present tense for immediacy when describing what she builds\n- Parenthetical asides for texture (like this one)\n\nNEVER use these words: game-changer, landscape, navigate, leverage, ecosystem, unlock, deep dive, at the end of the day, let's be honest, hot take, unpack, lean in, double down, move the needle\n\nHer positioning: \"I build the infrastructure. Then I write about what I learned.\"\n\n## STRATEGY SCORING GUIDE\n\n${scoringGuide}\n\n## TODAY'S SIGNALS\n\n${signalDescs}\n\n## YOUR TASK\n\nFor each signal, evaluate it against the strategy guide above and provide:\n\n1. **topic_name**: A clear, specific 3-8 word topic name (replace the raw n-gram)\n2. **strategy_fit**: Score 1-10 based on the Strategy Fit Score rubric in the guide. Be honest \u2014 a 5 is moderate, a 3 is weak.\n3. **brief_worthy**: true if strategy_fit >= 6, false otherwise\n4. **fit_rationale**: 1-2 sentences (max 30 words) explaining WHY this score. Reference specific criteria from the guide.\n5. **angles**: If brief_worthy, provide 2-3 specific content angles (max 15 words each). If not brief_worthy, provide an empty array.\n6. **hook**: If brief_worthy, draft an opening 2-3 sentences (max 50 words) in her voice per the rules above. If not, empty string.\n7. **linkedin_day**: Best fit day (Monday/Tuesday/Wednesday) or empty if not brief_worthy. Never suggest Thursday (that's for Substack essays).\n8. **disqualify_reason**: If not brief_worthy, state which disqualification criterion applies. Otherwise empty string.\n\nRespond in valid JSON only:\n{\"signals\": [{\"original_topic\": \"...\", \"topic_name\": \"...\", \"strategy_fit\": 7, \"brief_worthy\": true, \"fit_rationale\": \"...\", \"angles\": [\"...\", \"...\"], \"hook\": \"...\", \"linkedin_day\": \"...\", \"disqualify_reason\": \"\"}]}`;\n} else {\n  // Fallback prompt without scoring guide\n  prompt = `You are a content strategist for Your Name Barton, a VP Marketing who builds AI agent infrastructure for e-commerce. Her LinkedIn content pillars:\n\n1. Pillar One (Monday) \u2014 Live documentation of Claude Code agents, MCP servers, n8n automation.\n2. Pillar Two (Tuesday) \u2014 Strategic frameworks from 12+ years running P&Ls.\n3. Pillar Three (Wednesday) \u2014 Honest commentary on hiring, org design, leadership.\n\nHer voice: direct, specific, unsentimental. Executive clarity with operator detail.\n- Ground opinions in experience: \"Where I've seen this fail...\" not \"I believe...\"\n- Short declarative sentences to land a point\n- Contrarian but not combative \u2014 agree first, then push back\n- Personality through specificity, not exclamation marks\n- NEVER use: game-changer, landscape, navigate, leverage, ecosystem, unlock, deep dive, hot take, unpack, lean in, double down, move the needle\n\nHer positioning: \"I build the infrastructure. Then I write about what I learned.\"\n\nToday's signals:\n\n${signalDescs}\n\nFor each signal, provide:\n1. topic_name: A clear 3-8 word topic name\n2. strategy_fit: Score 1-10 (10 = perfect fit for her positioning)\n3. brief_worthy: true if strategy_fit >= 6\n4. fit_rationale: Why this score (max 30 words)\n5. angles: 2-3 content angles if brief_worthy (max 15 words each), else empty array\n6. hook: Draft opening in her voice if brief_worthy (max 50 words), else empty string\n7. linkedin_day: Best day (Monday/Tuesday/Wednesday) or empty\n8. disqualify_reason: Why not brief_worthy, or empty string\n\nRespond in valid JSON only:\n{\"signals\": [{\"original_topic\": \"...\", \"topic_name\": \"...\", \"strategy_fit\": 7, \"brief_worthy\": true, \"fit_rationale\": \"...\", \"angles\": [\"...\", \"...\"], \"hook\": \"...\", \"linkedin_day\": \"...\", \"disqualify_reason\": \"\"}]}`;\n}\n\n// API key appended by HTTP Request node\nconst url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';\n\nconst body = {\n  contents: [{ parts: [{ text: prompt }] }],\n  generationConfig: {\n    temperature: 0.7,\n    maxOutputTokens: 8192,\n    responseMimeType: \"application/json\"\n  }\n};\n\nreturn [{\n  json: {\n    _geminiUrl: url,\n    _geminiBody: JSON.stringify(body),\n    _signalsToEnrich: toEnrich.map(s => s.topic),\n    _geminiSkipped: false,\n    _scoringGuideLoaded: scoringGuide.length > 0\n  }\n}];\n",
+        "nodeVersion": 2.2
+      },
+      "id": "dfi-gemini-prep",
+      "name": "Prepare Gemini Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2100,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json._geminiUrl }}?key={{ $env.GEMINI_API_KEY }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 120000
+        },
+        "jsonBody": "={{ $json._geminiBody }}"
+      },
+      "id": "dfi-gemini-call",
+      "name": "Call Gemini API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2200,
+        200
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse Gemini response and enrich signals with AI-generated content + strategy scores\n// v3: Fallback requires impactScore >= 15 to be brief-worthy (prevents junk briefs)\n// Falls back to rule-based approach if Gemini failed\nconst originalData = $('Score Signal Impact').first().json;\nconst geminiInput = $input.first().json;\n\n// Check if Gemini was skipped\nconst prepData = $('Prepare Gemini Prompt').first().json;\nif (prepData._geminiSkipped) {\n  // Without AI enrichment, only allow high-impact signals through\n  for (const signal of originalData.signals) {\n    signal.enrichedByAI = false;\n    signal.briefWorthy = signal.impactScore >= 15;\n    signal.strategyFit = null;\n  }\n  return [{ json: { ...originalData, geminiEnriched: false, geminiReason: prepData._geminiReason || 'skipped' } }];\n}\n\n// Try to parse Gemini response\nlet enrichments = [];\ntry {\n  const candidates = geminiInput.candidates || [];\n  if (candidates.length > 0 && candidates[0].content?.parts?.[0]?.text) {\n    const text = candidates[0].content.parts[0].text;\n    const parsed = JSON.parse(text);\n    enrichments = parsed.signals || [];\n  }\n} catch (e) {\n  for (const signal of originalData.signals) {\n    signal.enrichedByAI = false;\n    signal.briefWorthy = signal.impactScore >= 15;\n    signal.strategyFit = null;\n  }\n  return [{ json: { ...originalData, geminiEnriched: false, geminiReason: 'parse error: ' + e.message } }];\n}\n\nif (enrichments.length === 0) {\n  for (const signal of originalData.signals) {\n    signal.enrichedByAI = false;\n    signal.briefWorthy = signal.impactScore >= 15;\n    signal.strategyFit = null;\n  }\n  return [{ json: { ...originalData, geminiEnriched: false, geminiReason: 'empty response' } }];\n}\n\n// Build lookup: original_topic -> enrichment\nconst enrichmentMap = {};\nfor (const e of enrichments) {\n  if (e.original_topic) {\n    enrichmentMap[e.original_topic] = e;\n  }\n}\n\n// Merge enrichments into signals\nconst { signals } = originalData;\nlet briefWorthyCount = 0;\nlet filteredCount = 0;\n\nfor (const signal of signals) {\n  const enrichment = enrichmentMap[signal.topic];\n  if (enrichment) {\n    signal.aiTopicName = enrichment.topic_name || signal.topic;\n    signal.strategyFit = enrichment.strategy_fit || null;\n    signal.briefWorthy = enrichment.brief_worthy !== false; // default true if missing\n    signal.fitRationale = enrichment.fit_rationale || '';\n    signal.disqualifyReason = enrichment.disqualify_reason || '';\n    signal.aiAngles = enrichment.brief_worthy ? (enrichment.angles || []) : [];\n    signal.aiHook = enrichment.brief_worthy ? (enrichment.hook || '') : '';\n    signal.aiLinkedinDay = enrichment.linkedin_day || '';\n    signal.enrichedByAI = true;\n\n    if (signal.briefWorthy) {\n      briefWorthyCount++;\n    } else {\n      filteredCount++;\n    }\n  } else {\n    // Signal wasn't sent to Gemini (beyond top 8) \u2014 require min impact\n    signal.enrichedByAI = false;\n    signal.briefWorthy = signal.impactScore >= 15;\n    signal.strategyFit = null;\n  }\n}\n\nreturn [{\n  json: {\n    ...originalData,\n    signals,\n    geminiEnriched: true,\n    briefWorthyCount,\n    filteredByStrategy: filteredCount\n  }\n}];\n",
+        "nodeVersion": 2.2
+      },
+      "id": "dfi-gemini-parse",
+      "name": "Parse Gemini Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2300,
+        200
+      ]
+    },
+    {
+      "id": "2d8a7c16-de9e-4007-83de-0fe1f702c116",
+      "name": "Prepare Article Scout",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        700,
+        600
+      ],
+      "parameters": {
+        "jsCode": "// Article Scout: Score individual articles as story seeds\n// Runs in parallel with signal detection \u2014 catches single high-quality articles\n// that don't cluster into trending topics but are strong source material\nconst fs = require('fs');\nconst data = $input.first().json;\nconst articles = data.entries || [];\n\nif (articles.length === 0) {\n  return [{ json: { _scoutSkipped: true, _scoutReason: 'no articles' } }];\n}\n\n// Content pillar terms for pre-filtering\nconst PILLAR_TERMS = {\n  'AI & Automation': ['ai', 'agent', 'automation', 'llm', 'claude', 'chatgpt', 'openai', 'anthropic', 'gemini', 'copilot', 'machine learning', 'mcp', 'workflow', 'pipeline', 'n8n', 'generative', 'agentic'],\n  'E-Commerce & DTC': ['shopify', 'dtc', 'ecommerce', 'e-commerce', 'marketplace', 'amazon', 'retail', 'conversion', 'checkout', 'fulfillment', 'commerce', 'subscription', 'wholesale'],\n  'Marketing & Growth': ['klaviyo', 'email marketing', 'lifecycle', 'retention', 'seo', 'analytics', 'attribution', 'cro', 'personalization', 'paid media', 'performance marketing', 'martech', 'campaign'],\n  'Leadership & Career': ['hiring', 'layoff', 'org design', 'leadership', 'career', 'compensation', 'management', 'restructuring', 'marketing leader', 'cmo', 'vp marketing']\n};\n\n// Pre-filter: articles with ANY pillar keyword in title\nconst candidates = [];\nfor (const article of articles) {\n  const title = (article.title || '').toLowerCase();\n  const matchedPillars = [];\n  for (const [pillar, terms] of Object.entries(PILLAR_TERMS)) {\n    for (const term of terms) {\n      if (term.length <= 3) {\n        const re = new RegExp('\\\\b' + term.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&') + '\\\\b', 'i');\n        if (re.test(title)) { matchedPillars.push(pillar); break; }\n      } else {\n        if (title.includes(term)) { matchedPillars.push(pillar); break; }\n      }\n    }\n  }\n  if (matchedPillars.length > 0) {\n    candidates.push({\n      title: article.title,\n      url: article.url,\n      feed: article.feed?.title || 'unknown',\n      pillars: [...new Set(matchedPillars)],\n      summary: (article.content || '').replace(/<[^>]*>/g, '').substring(0, 200).trim()\n    });\n  }\n}\n\nif (candidates.length === 0) {\n  return [{ json: { _scoutSkipped: true, _scoutReason: 'no pillar-relevant articles' } }];\n}\n\n// Send up to 25 candidates to Gemini\nconst toScore = candidates.slice(0, 25);\n\nconst articleList = toScore.map((a, i) =>\n  `${i+1}. \"${a.title}\" \u2014 ${a.feed} [${a.pillars.join(', ')}]${a.summary ? '\\n   ' + a.summary : ''}`\n).join('\\n\\n');\n\nconst prompt = `You are a content editor identifying high-quality source articles for Your Name's LinkedIn content.\n\nYour Name is a VP Marketing who builds AI agent infrastructure for e-commerce. She writes about: (1) Pillar One \u2014 Claude Code, MCP, automation, (2) E-Commerce strategy \u2014 Shopify Plus, Klaviyo, retail media, unit economics, (3) Career & leadership \u2014 hiring, org design, marketing teams.\n\n## WHAT MAKES A GOOD STORY SEED\n\nA story seed is a single article worth bookmarking as potential source material, even if nothing else is trending on the topic. Look for:\n\n- **Operational specificity**: Names a real company AND describes HOW they implemented something (not just that they did)\n- **Builder detail**: Specific tools, architectures, workflows, or technical decisions mentioned\n- **Data or metrics**: Concrete numbers, benchmarks, before/after results\n- **Executive perspective**: Direct quotes from operators (not analysts or journalists speculating)\n- **Contrarian or non-obvious angle**: Challenges conventional wisdom or reveals something surprising\n- **Connection to her work**: She could directly relate this to something she's built or operated\n\n## WHAT TO SKIP\n\n- News announcements without operational depth (funding rounds, product launches, executive moves)\n- Listicles and roundups\n- Generic \"state of X\" reports without specific insights\n- Anything she couldn't connect to personal experience\n\n## TODAY'S ARTICLES\n\n${articleList}\n\n## YOUR TASK\n\nScore ONLY the articles worth saving as story seeds (seed_score >= 7). Skip the rest entirely.\n\nFor each seed, provide:\n1. **article_number**: The number from the list above\n2. **seed_score**: 1-10 (only return articles scoring 7+)\n3. **pillar**: Primary content pillar this feeds\n4. **narrative_tag**: A 2-4 word thematic tag for grouping related seeds across days (e.g., \"dtc-ai-playbooks\", \"marketing-org-cuts\", \"retail-media-economics\")\n5. **seed_rationale**: Why this is worth tracking (max 20 words)\n6. **story_angle**: How Your Name could use this as source material (max 25 words)\n\nRespond in valid JSON only. Return empty array if nothing qualifies:\n{\"seeds\": [{\"article_number\": 1, \"seed_score\": 8, \"pillar\": \"AI & Automation\", \"narrative_tag\": \"dtc-ai-playbooks\", \"seed_rationale\": \"...\", \"story_angle\": \"...\"}]}`;\n\n// API key injected by HTTP Request node via $env expression \u2014 not accessible in Code node sandbox\nconst url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';\n\nconst body = {\n  contents: [{ parts: [{ text: prompt }] }],\n  generationConfig: {\n    temperature: 0.5,\n    maxOutputTokens: 8192,\n    responseMimeType: \"application/json\"\n  }\n};\n\nreturn [{\n  json: {\n    _scoutUrl: url,\n    _scoutBody: JSON.stringify(body),\n    _scoutSkipped: false,\n    _candidates: toScore,\n    _candidateCount: toScore.length,\n    _totalArticles: articles.length\n  }\n}];\n",
+        "mode": "runOnceForAllItems"
+      }
+    },
+    {
+      "id": "a493ef3f-7759-4da6-8b6a-07c7c54d88ed",
+      "name": "Call Article Scout API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1000,
+        600
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json._scoutUrl }}?key={{ $env.GEMINI_API_KEY }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 120000
+        },
+        "jsonBody": "={{ $json._scoutBody }}"
+      }
+    },
+    {
+      "id": "a1f6497b-e1c7-4210-a098-39d365b76f3d",
+      "name": "Save Story Seeds",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1300,
+        600
+      ],
+      "parameters": {
+        "jsCode": "// Parse Article Scout response and save story seeds\n// Accumulates seeds over time, detects narrative threads\nconst fs = require('fs');\nconst prepData = $('Prepare Article Scout').first().json;\nconst geminiInput = $input.first().json;\n\nconst seedsDir = '/home/node/your-vault/01-Inbox/content-signals/story-seeds';\nconst dataFile = seedsDir + '/seeds-data.json';\nconst mdFile = seedsDir + '/story-seeds.md';\nconst today = new Date().toLocaleDateString('en-CA');\n\nif (!fs.existsSync(seedsDir)) {\n  fs.mkdirSync(seedsDir, { recursive: true });\n}\n\n// Check if scout was skipped\nif (prepData._scoutSkipped) {\n  return [{ json: { scoutResult: 'skipped', reason: prepData._scoutReason } }];\n}\n\n// Load existing seeds\nlet existingSeeds = [];\ntry {\n  if (fs.existsSync(dataFile)) {\n    existingSeeds = JSON.parse(fs.readFileSync(dataFile, 'utf8'));\n  }\n} catch(e) {\n  existingSeeds = [];\n}\n\n// Prune seeds older than 14 days\nconst cutoff = new Date();\ncutoff.setDate(cutoff.getDate() - 14);\nconst cutoffStr = cutoff.toLocaleDateString('en-CA');\nexistingSeeds = existingSeeds.filter(s => s.date >= cutoffStr);\n\n// Parse Gemini response\nlet newSeeds = [];\ntry {\n  const candidates = geminiInput.candidates || [];\n  if (candidates.length > 0 && candidates[0].content?.parts?.[0]?.text) {\n    const text = candidates[0].content.parts[0].text;\n    const parsed = JSON.parse(text);\n    const rawSeeds = parsed.seeds || [];\n\n    // Map article numbers back to actual article data\n    const candidateArticles = prepData._candidates || [];\n    for (const seed of rawSeeds) {\n      const idx = (seed.article_number || 0) - 1;\n      if (idx >= 0 && idx < candidateArticles.length) {\n        const article = candidateArticles[idx];\n        newSeeds.push({\n          date: today,\n          title: article.title,\n          url: article.url,\n          feed: article.feed,\n          pillar: seed.pillar || article.pillars[0],\n          seedScore: seed.seed_score,\n          narrativeTag: seed.narrative_tag || '',\n          rationale: seed.seed_rationale || '',\n          storyAngle: seed.story_angle || '',\n          pillars: article.pillars\n        });\n      }\n    }\n  }\n} catch(e) {\n  // Gemini parse failed \u2014 no new seeds today\n  return [{ json: { scoutResult: 'parse_error', error: e.message, existingSeedCount: existingSeeds.length } }];\n}\n\n// Deduplicate by URL (don't re-add articles already in seeds)\nconst existingUrls = new Set(existingSeeds.map(s => s.url));\nconst genuinelyNew = newSeeds.filter(s => !existingUrls.has(s.url));\n\n// Merge\nconst allSeeds = [...existingSeeds, ...genuinelyNew];\n\n// Save data file\nfs.writeFileSync(dataFile, JSON.stringify(allSeeds, null, 2), 'utf8');\n\n// ===== DETECT NARRATIVE THREADS =====\n// Group seeds by narrative tag\nconst tagGroups = {};\nfor (const seed of allSeeds) {\n  const tag = seed.narrativeTag;\n  if (!tag) continue;\n  if (!tagGroups[tag]) tagGroups[tag] = [];\n  tagGroups[tag].push(seed);\n}\n\n// A thread forms when 3+ seeds share a tag across 2+ days\nconst threads = [];\nfor (const [tag, seeds] of Object.entries(tagGroups)) {\n  const uniqueDays = new Set(seeds.map(s => s.date));\n  if (seeds.length >= 3 && uniqueDays.size >= 2) {\n    threads.push({\n      tag,\n      seedCount: seeds.length,\n      days: uniqueDays.size,\n      seeds,\n      pillar: seeds[0].pillar\n    });\n  }\n}\n\n// Also flag \"warming\" threads (2 seeds, may form soon)\nconst warming = [];\nfor (const [tag, seeds] of Object.entries(tagGroups)) {\n  if (seeds.length === 2) {\n    warming.push({ tag, seedCount: 2, seeds });\n  }\n}\n\n// ===== GENERATE MARKDOWN =====\nlet md = `# Story Seeds \u2014 Updated ${today}\\n\\n`;\nmd += `**${allSeeds.length} active seeds** (${genuinelyNew.length} new today) | **${threads.length} narrative threads** | **${warming.length} warming**\\n\\n`;\nmd += `> Story seeds are individual articles worth tracking as source material. When 3+ seeds cluster around a theme across multiple days, a narrative thread forms \u2014 that's an essay or LinkedIn post waiting to happen.\\n\\n`;\n\n// Active threads first\nif (threads.length > 0) {\n  md += `## Narrative Threads\\n\\n`;\n  md += `These themes have accumulated enough seeds for a content piece.\\n\\n`;\n  for (const t of threads) {\n    md += `### ${t.tag} (${t.seedCount} seeds, ${t.days} days)\\n`;\n    md += `**Pillar:** ${t.pillar}\\n`;\n    for (const s of t.seeds) {\n      md += `- [${s.title}](${s.url}) \u2014 *${s.feed}* (${s.date})\\n`;\n      md += `  ${s.storyAngle}\\n`;\n    }\n    md += `\\n> **Ready to write?** Run \\`/write-from-signal ${t.tag}\\`\\n\\n`;\n  }\n}\n\n// Warming threads\nif (warming.length > 0) {\n  md += `## Warming (2 seeds \u2014 watching)\\n\\n`;\n  for (const w of warming) {\n    md += `**${w.tag}**\\n`;\n    for (const s of w.seeds) {\n      md += `- [${s.title}](${s.url}) \u2014 *${s.feed}* (${s.date})\\n`;\n    }\n    md += '\\n';\n  }\n}\n\n// Today's new seeds\nif (genuinelyNew.length > 0) {\n  md += `## New Seeds \u2014 ${today}\\n\\n`;\n  md += `| Score | Article | Feed | Pillar | Tag | Angle |\\n`;\n  md += `|:-----:|---------|------|--------|-----|-------|\\n`;\n  for (const s of genuinelyNew) {\n    md += `| ${s.seedScore}/10 | [${s.title}](${s.url}) | ${s.feed} | ${s.pillar} | \\`${s.narrativeTag}\\` | ${s.storyAngle} |\\n`;\n  }\n  md += '\\n';\n}\n\n// All active seeds by tag\nif (allSeeds.length > 0) {\n  md += `## All Active Seeds by Theme\\n\\n`;\n  const byTag = {};\n  for (const s of allSeeds) {\n    const tag = s.narrativeTag || 'uncategorized';\n    if (!byTag[tag]) byTag[tag] = [];\n    byTag[tag].push(s);\n  }\n  const sortedTags = Object.entries(byTag).sort((a, b) => b[1].length - a[1].length);\n  for (const [tag, seeds] of sortedTags) {\n    md += `### ${tag} (${seeds.length})\\n`;\n    for (const s of seeds) {\n      md += `- [${s.title}](${s.url}) \u2014 *${s.feed}* (${s.date}, score: ${s.seedScore}/10)\\n`;\n    }\n    md += '\\n';\n  }\n}\n\nfs.writeFileSync(mdFile, md, 'utf8');\n\n// ===== AUTO-GENERATE BRIEF STUBS FOR THREADS =====\nconst briefsDir = '/home/node/your-vault/01-Inbox/content-signals/briefs';\nconst threadBriefs = [];\nfor (const t of threads) {\n  const slug = t.tag.replace(/[^a-z0-9]+/g, '-').substring(0, 50);\n  const filename = `${today}-thread-${slug}.md`;\n  const filepath = `${briefsDir}/${filename}`;\n\n  // Don't overwrite if already generated today\n  if (fs.existsSync(filepath)) continue;\n\n  const articles = t.seeds.map(s =>\n    `- [${s.title}](${s.url}) \u2014 *${s.feed}* (${s.date})\\n  ${s.storyAngle}`\n  ).join('\\n');\n\n  const brief = `---\nsignal_date: ${today}\ntopic: ${t.tag}\nsource: story-seeds\nseed_count: ${t.seedCount}\ndays_tracked: ${t.days}\nmatched_pillars: [${t.pillar}]\nenrichment: narrative-thread\nstatus: stub\n---\n\n# Narrative Thread: ${t.tag}\n\n## Thread Summary\n\nThis topic has accumulated **${t.seedCount} story seeds** over **${t.days} days** \u2014 enough signal for a content piece.\n\n**Primary pillar:** ${t.pillar}\n\n## Source Articles\n\n${articles}\n\n## Suggested Approach\n\nThis is a narrative thread, not a breaking signal. The angle should synthesize across sources \u2014 what pattern emerges when you read these together? What do these articles collectively reveal that none of them say individually?\n\n## Usage\n\nRun in Claude Code:\n\\`\\`\\`\n/write-from-signal ${t.tag}\n\\`\\`\\`\n`;\n  fs.writeFileSync(filepath, brief, 'utf8');\n  threadBriefs.push({ filename, tag: t.tag, seedCount: t.seedCount });\n}\n\nreturn [{ json: {\n  scoutResult: 'success',\n  newSeedsToday: genuinelyNew.length,\n  totalActiveSeeds: allSeeds.length,\n  narrativeThreads: threads.length,\n  warmingThreads: warming.length,\n  threadBriefsGenerated: threadBriefs,\n  seedsFile: mdFile,\n  dataFile\n} }];\n",
+        "mode": "runOnceForAllItems"
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build rich Slack digest message with curated picks\nconst input = $input.first().json;\nconst today = new Date().toLocaleDateString('en-US', {\n  month: 'short', day: 'numeric', timeZone: 'America/New_York'\n});\nconst totalCount = input.totalCount || 0;\nconst catSummary = input.catSummary || {};\nconst starred = input.starred || [];\nconst articlesByCategory = input.articlesByCategory || {};\nconst catCount = Object.keys(catSummary).length;\n\n// --- Header ---\nlet text = ':newspaper: *Daily Feed Intelligence \\u2014 ' + today + '*\\n';\ntext += totalCount + ' articles across ' + catCount + ' categories\\n\\n';\n\n// --- Category breakdown ---\nif (catCount > 0) {\n  const catLine = Object.entries(catSummary)\n    .map(([cat, count]) => cat + ' (' + count + ')')\n    .join(' \\u00b7 ');\n  text += ':file_folder: ' + catLine + '\\n\\n';\n}\n\n// --- Curate top 5-8 picks ---\n// Priority: starred first, then pick 1-2 from each category (skip Reddit noise)\nconst picks = [];\nconst seenUrls = new Set();\n\n// 1. All starred articles first\nfor (const item of starred) {\n  if (!seenUrls.has(item.url)) {\n    picks.push({ ...item, reason: 'starred' });\n    seenUrls.add(item.url);\n  }\n}\n\n// 2. From each category, pick top articles (skip Reddit, prefer industry sources)\nconst skipCategories = new Set(['Reddit']);\nconst categoryOrder = ['Industry News', 'Growth + Marketing', 'AI + Technology', 'Product + Engineering', 'Business'];\nconst orderedCats = Object.keys(articlesByCategory).sort((a, b) => {\n  const ai = categoryOrder.indexOf(a);\n  const bi = categoryOrder.indexOf(b);\n  return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);\n});\n\nfor (const cat of orderedCats) {\n  if (skipCategories.has(cat)) continue;\n  const items = articlesByCategory[cat] || [];\n  let catPicks = 0;\n  const maxPerCat = Math.max(1, Math.min(2, Math.ceil(8 / Math.max(catCount - 1, 1))));\n  for (const item of items) {\n    if (catPicks >= maxPerCat) break;\n    if (picks.length >= 8) break;\n    if (seenUrls.has(item.url)) continue;\n    picks.push({ ...item, category: cat });\n    seenUrls.add(item.url);\n    catPicks++;\n  }\n}\n\n// --- Format picks ---\nif (picks.length > 0) {\n  text += ':star: *Top Reads:*\\n';\n  for (const p of picks) {\n    const cat = p.category || p.reason || '';\n    const preview = (p.preview || '').substring(0, 120).replace(/\\n/g, ' ');\n    text += '\\u2022 <' + p.url + '|' + p.title + '>';\n    text += ' \\u2014 _' + p.feed + '_';\n    if (cat && cat !== 'starred') text += ' [' + cat + ']';\n    text += '\\n';\n    if (preview) text += '  ' + preview + '\\u2026\\n';\n  }\n  text += '\\n';\n}\n\n// --- Obsidian link to full digest ---\nconst digestPath = '01-Inbox/daily-rss-digest/' + input.filename;\nconst encodedPath = encodeURIComponent(digestPath).replace(/%2F/g, '/');\ntext += ':bookmark: <obsidian://open?vault=your-vault&file=' + encodedPath + '|Full digest in Obsidian>';\n\nreturn [{ json: { text } }];"
+      },
+      "id": "dfi-digest-complete-format",
+      "name": "Format Digest Complete",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        -400
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://slack.com/api/chat.postMessage",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SLACK_BOT_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json; charset=utf-8"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ \"channel\": $env.SLACK_CONTENT_CHANNEL_ID, \"blocks\": [ { \"type\": \"section\", \"text\": { \"type\": \"mrkdwn\", \"text\": $json.text } } ] }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "dfi-digest-complete-slack",
+      "name": "Slack \u2014 Digest Complete",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1340,
+        -400
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Flag ExecPR Signals \u2014 detect PR-worthy opportunities from today's signals\n// Writes JSON flags file for morning-pipeline.sh to process\nconst fs = require('fs');\nconst data = $input.first().json;\nconst { signals } = data;\nconst today = new Date().toLocaleDateString('en-CA');\n\nconst flagsDir = '/home/node/your-vault/01-Inbox/content-signals/execpr-flags';\nif (!fs.existsSync(flagsDir)) {\n  fs.mkdirSync(flagsDir, { recursive: true });\n}\n\nconst EXECPR_KEYWORDS = [\n  'podcast', 'award', 'conference', 'speaking', 'cfp',\n  'byline', 'expert source', 'haro', 'call for speakers',\n  'nominations', 'summit', 'keynote', 'panelist'\n];\n\nconst flags = [];\n\nfor (const signal of signals) {\n  const matchedPillars = signal.matchedPillars || [];\n  const isLeadershipPillar = matchedPillars.includes('Leadership & Career');\n\n  // Check article titles for ExecPR keywords\n  const articles = signal.articles || [];\n  const titleText = articles.map(a => (a.title || '').toLowerCase()).join(' ');\n  const hasKeyword = EXECPR_KEYWORDS.some(kw => titleText.includes(kw));\n\n  // High strategy fit + positioning alignment\n  const highFit = (signal.strategyFit || 0) >= 8 && isLeadershipPillar;\n\n  if (!isLeadershipPillar && !hasKeyword && !highFit) continue;\n\n  // Determine opportunity type\n  let type = 'content-signal';\n  if (titleText.includes('podcast')) type = 'podcast';\n  else if (titleText.includes('award') || titleText.includes('nominations')) type = 'award';\n  else if (titleText.includes('conference') || titleText.includes('summit') || titleText.includes('cfp') || titleText.includes('call for speakers')) type = 'speaking';\n  else if (titleText.includes('haro') || titleText.includes('expert source') || titleText.includes('byline')) type = 'press';\n\n  flags.push({\n    topic: signal.aiTopicName || signal.topic,\n    type,\n    strategy_fit: signal.strategyFit || null,\n    articles: articles.slice(0, 5).map(a => ({\n      title: a.title,\n      url: a.url,\n      feed: a.feed\n    })),\n    rationale: signal.fitRationale || signal.rationale || '',\n    suggested_action: type === 'podcast' ? 'Review for /execpr:pitch podcast'\n      : type === 'award' ? 'Review for /execpr:submit award'\n      : type === 'speaking' ? 'Review for /execpr:submit speaking'\n      : type === 'press' ? 'Review for /execpr:pitch press'\n      : 'Review for /execpr:pitch or /execpr:submit'\n  });\n}\n\n// Write flags file\nconst flagsFile = `${flagsDir}/${today}.json`;\nfs.writeFileSync(flagsFile, JSON.stringify(flags, null, 2), 'utf8');\n\nreturn [{ json: { ...data, execprFlags: flags, execprFlagCount: flags.length, execprFlagsFile: flagsFile } }];\n",
+        "nodeVersion": 2.2
+      },
+      "id": "dfi-execpr-flags",
+      "name": "Flag ExecPR Signals",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2500,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Auto-Assign Sprint \u2014 map briefs to pillars, calculate scheduled dates, assign sprint fields\n// v2: Adds urgency tiers (routine / high-signal / breaking) with displacement detection\nconst fs = require('fs');\nconst data = $input.first().json;\nconst { generatedBriefs, briefsDir } = data;\n\nif (!generatedBriefs || generatedBriefs.length === 0) {\n  return [{ json: { ...data, sprintAssignments: [], sprintAssignedCount: 0, urgencyAlerts: [] } }];\n}\n\n// Load pillars config\nconst pillarsPath = '/home/node/your-vault/Repos.nosync/gcd/.planning/pillars.json';\nlet pillarsConfig;\ntry {\n  pillarsConfig = JSON.parse(fs.readFileSync(pillarsPath, 'utf8'));\n} catch (e) {\n  return [{ json: { ...data, sprintAssignments: [], sprintAssignedCount: 0, urgencyAlerts: [], sprintError: 'Could not load pillars.json: ' + e.message } }];\n}\n\nconst pillars = pillarsConfig.pillars;\n\nconst PILLAR_MAP = {\n  'AI & Automation': 'building-with-ai',\n  'E-Commerce & DTC': 'ecommerce-marketing',\n  'Marketing & Growth': 'ecommerce-marketing',\n  'Leadership & Career': 'career-leadership'\n};\n\nfunction getISOWeek(d) {\n  const date = new Date(d);\n  date.setHours(0, 0, 0, 0);\n  date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);\n  const week1 = new Date(date.getFullYear(), 0, 4);\n  const weekNum = 1 + Math.round(((date - week1) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);\n  return `${date.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;\n}\n\nconst DAY_TO_NUM = { Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4 };\n\n// Scan existing briefs \u2014 store full metadata for displacement detection\nconst existingBriefData = [];\ntry {\n  const files = fs.readdirSync(briefsDir).filter(f => f.endsWith('.md'));\n  for (const file of files) {\n    const content = fs.readFileSync(`${briefsDir}/${file}`, 'utf8');\n    const fmMatch = content.match(/^---\\n([\\s\\S]*?)\\n---/);\n    if (fmMatch) {\n      const fm = fmMatch[1];\n      const sprintMatch = fm.match(/^sprint:\\s*(.+)$/m);\n      const pieceMatch = fm.match(/^piece_id:\\s*(.+)$/m);\n      const topicMatch = fm.match(/^topic:\\s*(.+)$/m);\n      const statusMatch = fm.match(/^status:\\s*(.+)$/m);\n      if (sprintMatch && pieceMatch) {\n        existingBriefData.push({\n          sprint: sprintMatch[1].trim(),\n          piece_id: pieceMatch[1].trim(),\n          topic: topicMatch ? topicMatch[1].trim() : 'unknown',\n          status: statusMatch ? statusMatch[1].trim() : 'unknown',\n          file\n        });\n      }\n    }\n  }\n} catch (e) { /* ignore scan errors */ }\n\nconst usedSlots = new Set(existingBriefData.map(b => `${b.sprint}|${b.piece_id}`));\n// Lookup: slotKey -> existing brief info for displacement detection\nconst slotOccupants = {};\nfor (const b of existingBriefData) {\n  slotOccupants[`${b.sprint}|${b.piece_id}`] = b;\n}\n\nconst assignments = [];\nconst urgencyAlerts = [];\nconst now = new Date();\nconst minDate = new Date(now);\nminDate.setDate(minDate.getDate() + 2);\n\nfor (const brief of generatedBriefs) {\n  const matchedPillars = brief.matchedPillars || [];\n  const impactScore = brief.impactScore || 0;\n  const strategyFit = brief.strategyFit || 0;\n  const sourceCount = brief.sourceCount || (brief.matchedPillars || []).length;\n\n  // --- URGENCY TIER ---\n  let urgency = 'routine';\n  if (impactScore > 40 || sourceCount >= 6) {\n    urgency = 'breaking';\n  } else if (impactScore >= 30 && strategyFit >= 8) {\n    urgency = 'high-signal';\n  }\n\n  // Determine pillar\n  let pillarId = null;\n  if (brief.route === 'essay') {\n    pillarId = 'pillar-four-essays';\n  } else {\n    for (const mp of matchedPillars) {\n      if (PILLAR_MAP[mp]) {\n        pillarId = PILLAR_MAP[mp];\n        break;\n      }\n    }\n  }\n\n  if (!pillarId) continue;\n\n  const pillar = pillars.find(p => p.id === pillarId);\n  if (!pillar) continue;\n\n  const targetDayNum = DAY_TO_NUM[pillar.day];\n  if (targetDayNum === undefined) continue;\n\n  // Find next occurrence of pillar's day >= minDate\n  let scheduled = new Date(minDate);\n  while (scheduled.getDay() !== targetDayNum) {\n    scheduled.setDate(scheduled.getDate() + 1);\n  }\n\n  let sprint = getISOWeek(scheduled);\n  let weekNum = sprint.split('-W')[1];\n  let pieceId = `W${weekNum}-${String(pillar.day_index).padStart(2, '0')}`;\n  let slotKey = `${sprint}|${pieceId}`;\n\n  // Track what's in the nearest slot BEFORE bumping (for displacement alert)\n  const nearestSlotOccupant = slotOccupants[slotKey] || null;\n\n  // If slot taken, advance to next week\n  let maxRetries = 4;\n  let wasBumped = false;\n  while (usedSlots.has(slotKey) && maxRetries > 0) {\n    wasBumped = true;\n    scheduled.setDate(scheduled.getDate() + 7);\n    sprint = getISOWeek(scheduled);\n    weekNum = sprint.split('-W')[1];\n    pieceId = `W${weekNum}-${String(pillar.day_index).padStart(2, '0')}`;\n    slotKey = `${sprint}|${pieceId}`;\n    maxRetries--;\n  }\n\n  usedSlots.add(slotKey);\n\n  // Format scheduled datetime\n  const postTime = pillar.post_time || '08:30';\n  const year = scheduled.getFullYear();\n  const month = String(scheduled.getMonth() + 1).padStart(2, '0');\n  const day = String(scheduled.getDate()).padStart(2, '0');\n  const scheduledISO = `${year}-${month}-${day}T${postTime}:00-05:00`;\n\n  // Update brief file on disk \u2014 inject sprint fields + urgency into frontmatter\n  const briefPath = brief.path;\n  try {\n    let content = fs.readFileSync(briefPath, 'utf8');\n    const fmEnd = content.indexOf('---', 4);\n    if (fmEnd > 0) {\n      const before = content.substring(0, fmEnd);\n      const after = content.substring(fmEnd);\n      let sprintFields = `sprint: ${sprint}\\npiece_id: ${pieceId}\\npillar: ${pillar.name}\\nscheduled: ${scheduledISO}\\n`;\n      if (urgency !== 'routine') {\n        sprintFields += `urgency: ${urgency}\\n`;\n      }\n      content = before + sprintFields + after;\n      fs.writeFileSync(briefPath, content, 'utf8');\n    }\n  } catch (e) { /* skip file write errors */ }\n\n  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];\n  const assignment = {\n    pieceId,\n    day: dayNames[scheduled.getDay()],\n    pillarName: pillar.name,\n    topic: brief.topic,\n    route: brief.route,\n    filename: brief.filename,\n    sprint,\n    scheduled: scheduledISO,\n    briefPath,\n    urgency,\n    impactScore,\n    strategyFit\n  };\n  assignments.push(assignment);\n\n  // --- URGENCY ALERTS ---\n  if (urgency === 'high-signal' || urgency === 'breaking') {\n    const alert = {\n      urgency,\n      topic: brief.topic,\n      impactScore,\n      strategyFit,\n      sourceCount,\n      assignedSlot: pieceId + ' (' + dayNames[scheduled.getDay()] + ')',\n      assignedSprint: sprint\n    };\n    if (wasBumped && nearestSlotOccupant) {\n      alert.displacedTo = 'next week (slot was taken)';\n      alert.occupant = {\n        topic: nearestSlotOccupant.topic,\n        piece_id: nearestSlotOccupant.piece_id,\n        status: nearestSlotOccupant.status,\n        file: nearestSlotOccupant.file\n      };\n      alert.recommendation = urgency === 'breaking'\n        ? 'Consider bumping \"' + nearestSlotOccupant.topic + '\" (' + nearestSlotOccupant.piece_id + ') to run this instead \u2014 timeliness may outweigh the queued piece.'\n        : 'Slot taken by \"' + nearestSlotOccupant.topic + '\" \u2014 this was pushed to next week. Review if swap is warranted.';\n    } else if (wasBumped) {\n      alert.displacedTo = 'next week (slot was taken)';\n      alert.recommendation = urgency === 'breaking'\n        ? 'Pushed to next week but this is breaking news \u2014 consider manual override to publish sooner.'\n        : 'Pushed to next week. Monitor if topic stays relevant.';\n    } else {\n      alert.recommendation = urgency === 'breaking'\n        ? 'Slot was open \u2014 scheduled normally, but consider if this warrants same-day or next-day posting instead of waiting.'\n        : 'Scheduled normally. High-signal \u2014 prioritize quality in production.';\n    }\n    urgencyAlerts.push(alert);\n  }\n}\n\nreturn [{ json: { ...data, sprintAssignments: assignments, sprintAssignedCount: assignments.length, urgencyAlerts } }];\n",
+        "nodeVersion": 2.2
+      },
+      "id": "dfi-auto-sprint",
+      "name": "Auto-Assign Sprint",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2900,
+        200
+      ]
+    }
+  ],
+  "connections": {
+    "Daily 6am ET": {
+      "main": [
+        [
+          {
+            "node": "Fetch Recent Articles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Recent Articles": {
+      "main": [
+        [
+          {
+            "node": "Has Entries?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Pipeline Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Entries?": {
+      "main": [
+        [
+          {
+            "node": "Format Digest Markdown",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Load 7-Day History",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Prepare Article Scout",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No New Entries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Digest Markdown": {
+      "main": [
+        [
+          {
+            "node": "Save Digest to Vault",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Digest to Vault": {
+      "main": [
+        [
+          {
+            "node": "Mark Entries as Read",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Format Digest Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load 7-Day History": {
+      "main": [
+        [
+          {
+            "node": "Extract Topics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Topics": {
+      "main": [
+        [
+          {
+            "node": "Detect Signals",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Detect Signals": {
+      "main": [
+        [
+          {
+            "node": "Prepare Reddit URLs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Reddit URLs": {
+      "main": [
+        [
+          {
+            "node": "Has Reddit URLs?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Reddit URLs?": {
+      "main": [
+        [
+          {
+            "node": "Fetch Reddit Data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Merge Reddit Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Reddit Data": {
+      "main": [
+        [
+          {
+            "node": "Merge Reddit Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Reddit Results": {
+      "main": [
+        [
+          {
+            "node": "Score Signal Impact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Score Signal Impact": {
+      "main": [
+        [
+          {
+            "node": "Prepare Gemini Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Content Brief Stubs": {
+      "main": [
+        [
+          {
+            "node": "Auto-Assign Sprint",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Auto-Assign Sprint": {
+      "main": [
+        [
+          {
+            "node": "Generate Signals Brief",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Signals Brief": {
+      "main": [
+        [
+          {
+            "node": "Save Brief & History",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Brief & History": {
+      "main": [
+        [
+          {
+            "node": "Format Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Notification": {
+      "main": [
+        [
+          {
+            "node": "Slack \u2014 Content Briefs Ready",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Pipeline Error": {
+      "main": [
+        [
+          {
+            "node": "Slack \u2014 Pipeline Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Gemini Prompt": {
+      "main": [
+        [
+          {
+            "node": "Call Gemini API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Gemini API": {
+      "main": [
+        [
+          {
+            "node": "Parse Gemini Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Gemini Response": {
+      "main": [
+        [
+          {
+            "node": "Flag ExecPR Signals",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Flag ExecPR Signals": {
+      "main": [
+        [
+          {
+            "node": "Generate Content Brief Stubs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Article Scout": {
+      "main": [
+        [
+          {
+            "node": "Call Article Scout API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Article Scout API": {
+      "main": [
+        [
+          {
+            "node": "Save Story Seeds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Digest Complete": {
+      "main": [
+        [
+          {
+            "node": "Slack \u2014 Digest Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/New_York",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  }
+}

@@ -47,7 +47,7 @@ done
 log "Copying files..."
 rsync -a --delete-excluded \
   "${RSYNC_EXCLUDES[@]+"${RSYNC_EXCLUDES[@]}"}" \
-  --exclude "README.md" \
+  --exclude "/README.md" \
   "${SOURCE_DIR}/" "${TARGET_DIR}/"
 
 # ── Generate generic pillars.example.json ───────────────────────────
@@ -57,7 +57,7 @@ cat > "${TARGET_DIR}/.planning/pillars.example.json" << 'PILLARS_EOF'
 {
   "version": "1.0",
   "quality_gate": {
-    "min_impact_score": 15,
+    "min_impact_score": 10,
     "min_composite_score": 0.4,
     "stale_days": 14,
     "prefer_enriched": true
@@ -133,7 +133,7 @@ log "Scrubbing personal references..."
 # Helper: sed in-place (macOS compatible)
 sedi() { sed -i '' "$@"; }
 
-# Scrub vault paths in skill files
+# Scrub vault paths in skill and pipeline files
 find "${TARGET_DIR}/skills" "${TARGET_DIR}/agents" -name '*.md' -exec \
   sed -i '' 's|~/Popoloto/Repos\.nosync/gcd-dev/|~/your-repo/|g' {} +
 
@@ -189,6 +189,62 @@ find "${TARGET_DIR}/skills" "${TARGET_DIR}/agents" -name '*.md' -exec \
 find "${TARGET_DIR}/skills" "${TARGET_DIR}/agents" -name '*.md' -exec \
   sed -i '' 's/dgtl dept/Pillar Four/g' {} +
 
+find "${TARGET_DIR}/skills" "${TARGET_DIR}/agents" -name '*.md' -exec \
+  sed -i '' 's/dgtl-dept/pillar-four/g' {} +
+
+# Scrub pipeline scripts and workflow
+if [[ -d "${TARGET_DIR}/pipeline" ]]; then
+  # TARS-specific paths → generic
+  find "${TARGET_DIR}/pipeline" \( -name '*.sh' -o -name '*.md' \) -exec \
+    sed -i '' 's|/Users/tars/|~/|g' {} +
+  find "${TARGET_DIR}/pipeline" \( -name '*.sh' -o -name '*.md' \) -exec \
+    sed -i '' 's|tars@tars\.local|user@your-server|g' {} +
+  find "${TARGET_DIR}/pipeline" \( -name '*.sh' -o -name '*.md' \) -exec \
+    sed -i '' 's|TARS (Mac Mini M4 Pro)|your macOS host|g' {} +
+  find "${TARGET_DIR}/pipeline" \( -name '*.sh' -o -name '*.md' \) -exec \
+    sed -i '' 's|TARS|your host|g' {} +
+  find "${TARGET_DIR}/pipeline" \( -name '*.sh' -o -name '*.md' \) -exec \
+    sed -i '' 's|tars\.local|your-server|g' {} +
+  find "${TARGET_DIR}/pipeline" \( -name '*.sh' -o -name '*.md' \) -exec \
+    sed -i '' 's|com\.tars\.|com.gcd.|g' {} +
+
+  # Author references in shell scripts
+  find "${TARGET_DIR}/pipeline" -name '*.sh' -exec \
+    sed -i '' 's/Rebecca Barton/Your Name/g' {} +
+  find "${TARGET_DIR}/pipeline" -name '*.sh' -exec \
+    sed -i '' 's/Rebecca/Your Name/g' {} +
+
+  # Vault paths in shell scripts
+  find "${TARGET_DIR}/pipeline" -name '*.sh' -exec \
+    sed -i '' 's|~/Popoloto|~/your-vault|g' {} +
+  find "${TARGET_DIR}/pipeline" -name '*.sh' -exec \
+    sed -i '' 's|Popoloto|your-vault|g' {} +
+
+  # Vault paths and pillar names in README
+  if [[ -f "${TARGET_DIR}/pipeline/README.md" ]]; then
+    sedi 's|~/Popoloto/[^ ]*|~/your-vault/...|g' "${TARGET_DIR}/pipeline/README.md"
+    sedi 's|Popoloto|your-vault|g' "${TARGET_DIR}/pipeline/README.md"
+    sedi 's|dgtl dept Essays|Pillar Four|g' "${TARGET_DIR}/pipeline/README.md"
+    sedi 's|dgtl dept|Pillar Four|g' "${TARGET_DIR}/pipeline/README.md"
+  fi
+
+  # Scrub workflow.json: author refs and vault paths in JS code strings
+  if [[ -f "${TARGET_DIR}/pipeline/workflow.json" ]]; then
+    sedi "s/Rebecca Barton's/Your Name's/g" "${TARGET_DIR}/pipeline/workflow.json"
+    sedi "s/Rebecca's/Your Name's/g" "${TARGET_DIR}/pipeline/workflow.json"
+    sedi "s/REBECCA'S/YOUR NAME'S/g" "${TARGET_DIR}/pipeline/workflow.json"
+    sedi 's/REBECCA/YOUR NAME/g' "${TARGET_DIR}/pipeline/workflow.json"
+    sedi 's/Rebecca/Your Name/g' "${TARGET_DIR}/pipeline/workflow.json"
+    sedi 's|[Pp]opoloto|your-vault|g' "${TARGET_DIR}/pipeline/workflow.json"
+    sedi 's|/Users/tars/|~/|g' "${TARGET_DIR}/pipeline/workflow.json"
+    sedi 's|dgtl-dept|pillar-four|g' "${TARGET_DIR}/pipeline/workflow.json"
+    sedi 's|dgtl dept|Pillar Four|g' "${TARGET_DIR}/pipeline/workflow.json"
+    sedi 's|Building with AI|Pillar One|g' "${TARGET_DIR}/pipeline/workflow.json"
+    sedi 's|E-Commerce & Marketing Strategy|Pillar Two|g' "${TARGET_DIR}/pipeline/workflow.json"
+    sedi 's|Career & Leadership|Pillar Three|g' "${TARGET_DIR}/pipeline/workflow.json"
+  fi
+fi
+
 # Scrub frontmatter spec
 if [[ -f "${TARGET_DIR}/.planning/schemas/frontmatter-spec.md" ]]; then
   sedi 's/"Building with AI"/"Pillar One"/g' "${TARGET_DIR}/.planning/schemas/frontmatter-spec.md"
@@ -203,9 +259,9 @@ fi
 
 log "Checking for personal data leaks..."
 LEAKS=0
-for pattern in "Rebecca" "Popoloto" "gcd-dev" "dgtl dept"; do
-  MATCHES=$(grep -r --include='*.md' --include='*.json' "$pattern" \
-    "${TARGET_DIR}/skills" "${TARGET_DIR}/agents" "${TARGET_DIR}/.planning" 2>/dev/null || true)
+for pattern in "Rebecca" "Popoloto" "gcd-dev" "dgtl dept" "/Users/tars" "tars.local"; do
+  MATCHES=$(grep -r --include='*.md' --include='*.json' --include='*.sh' "$pattern" \
+    "${TARGET_DIR}/skills" "${TARGET_DIR}/agents" "${TARGET_DIR}/.planning" "${TARGET_DIR}/pipeline" 2>/dev/null || true)
   if [[ -n "$MATCHES" ]]; then
     echo "  LEAK: '$pattern' found:"
     echo "$MATCHES" | head -5

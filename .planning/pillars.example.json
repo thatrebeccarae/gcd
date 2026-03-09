@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "quality_gate": {
-    "min_impact_score": 15,
+    "min_impact_score": 10,
     "min_composite_score": 0.4,
     "stale_days": 14,
     "prefer_enriched": true

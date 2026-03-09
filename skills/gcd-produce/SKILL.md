@@ -398,7 +398,7 @@ platform: substack
 sprint: "{sprint_id}"
 status: draft
 created: {today's date in YYYY-MM-DD format}
-tags: [newsletter, weekly, dgtl-dept]
+tags: [newsletter, weekly, pillar-four]
 ---
 ```
 
