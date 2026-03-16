@@ -34,6 +34,30 @@ Before reviewing, also read:
 
 ---
 
+## Scoring Scorecard
+
+The calling skill provides a JSON scorecard from `analyze_content.py` as part of your invocation context. This scorecard contains objective metrics that have already been computed:
+
+- **`metrics.burstiness`** — Sentence length variance (higher = more human-like rhythm)
+- **`metrics.ttr`** — Type-token ratio (lexical diversity)
+- **`banned_phrases`** — Array of detected banned/AI-associated phrases with line numbers
+- **`metrics.banned_phrases_count`** — Count of banned phrases (note: auto-gated at >5, so you only see drafts with <=5)
+- **`metrics.flesch_reading_ease`** — Flesch readability score
+- **`metrics.marker_counts`** — Object with `personal_experience`, `original_data`, `unique_insight` counts
+- **`metrics.content_type`** — Detected content type (e.g., linkedin-post, substack-essay)
+- **`metrics.passive_voice_pct`** — Percentage of passive voice sentences
+- **`metrics.ai_trigger_density`** — AI trigger word density per 1,000 words
+
+**How to use the scorecard:**
+
+- **Voice & Tone:** Incorporate `burstiness` and `ttr` as objective evidence. If burstiness is 0.3-0.5 (borderline), flag sentence rhythm as a concern. Use `banned_phrases` locations to pinpoint specific lines needing revision.
+- **Template Adherence (dimension 7):** Use `content_type` to identify the expected template.
+- **Information Gain Markers (dimension 8):** Use `marker_counts` as the objective count. Cross-reference with your own reading of marker placement and quality.
+
+Do NOT re-evaluate metrics the scorecard already provides. Reference them as facts.
+
+---
+
 ## Review Framework
 
 For every piece of content, evaluate against these dimensions:
@@ -138,6 +162,48 @@ For each numbered tweet (1/, 2/, N/), count characters including spaces and punc
 
 Include character count violations (>285 chars) in Priority Fix. Include minor overages (281-285) in Line-Level Notes.
 
+### 7. Template Adherence
+
+Check whether the draft follows its expected content template.
+
+**Identifying the template:**
+1. Check the draft's frontmatter for `content_type` or `template` field
+2. If not in frontmatter, use the scorecard's `metrics.content_type` value
+3. Map the content type to the corresponding template file at `~/your-vault/03-Areas/professional-content/strategy/content-templates/{content_type}.md`
+4. If the template file exists, read it and use it as the structural reference
+
+**What to check:**
+- Does the draft follow the template's required sections and structure?
+- Are all required marker types from the template present in the draft?
+- Does the draft include the template's prescribed elements (e.g., Citation Capsules, CTAs, specific section types)?
+- Are there sections that deviate from the template without clear editorial justification?
+
+**Rating:**
+- **Strong:** Follows template closely — all required sections present, prescribed elements included, structure matches
+- **Needs Work:** Minor deviations — missing 1-2 optional sections, or a prescribed element is present but weak
+- **Weak:** Major structural departures — required sections missing, template structure not recognizable
+- **N/A:** No template identified or content type has no corresponding template file
+
+### 8. Information Gain Markers
+
+Verify that information gain markers are present, well-placed, and that no fabricated experiences exist without markers.
+
+**Markers to check for:**
+- `[PERSONAL EXPERIENCE]` — Where the producer could not write from direct knowledge about Your Name's personal experience
+- `[ORIGINAL DATA]` — Where proprietary data, stats, or research results are needed
+- `[UNIQUE INSIGHT]` — Where a distinctive perspective or non-obvious conclusion is needed
+
+**What to check:**
+1. **Marker presence:** Are markers present where the producer could not write from direct knowledge? Use `marker_counts` from the scorecard as the objective count.
+2. **Fabrication detection:** Flag any first-person experience claims that are NOT marked but appear fabricated. Examples: "I tested this for 6 months," "When I ran this campaign," "In my experience with [specific tool]" — if these appear without a `[PERSONAL EXPERIENCE]` marker and the draft was AI-generated, this is fabrication.
+3. **Marker placement:** Are markers in logical positions within the text (inline where the content gap exists), not dumped at the end of the piece?
+4. **Marker density:** If the piece is 1000+ words and has zero markers, flag this — it likely contains fabricated experiences or is too generic.
+
+**Rating:**
+- **Strong:** Markers present where needed, well-placed inline, no fabrication detected
+- **Needs Work:** Some markers missing or poorly placed (e.g., clustered at end), but no outright fabrication
+- **Weak:** Fabricated experiences detected without markers, OR zero markers in a substantial piece
+
 ---
 
 ## Output Format
@@ -155,6 +221,8 @@ IMPORTANT: Every review MUST begin with the Gate Evaluation block below. This bl
 - **SEO:** [Strong/Needs Work/Weak]
 - **Word Count:** [N]
 - **Thread Validation:** [Pass/Needs Work/Fail] (only for platform: twitter)
+- **Template Adherence:** [Strong/Needs Work/Weak/N/A]
+- **Markers:** [Strong/Needs Work/Weak]
 - **Decision:** [pass/revise/escalate]
 
 **Overall Assessment:** [1-2 sentences — publish-ready, needs revisions, or needs major rework]
@@ -178,6 +246,12 @@ IMPORTANT: Every review MUST begin with the Gate Evaluation block below. This bl
 ### Readability: [Strong / Needs Work / Weak]
 - ...
 
+### Template Adherence: [Strong / Needs Work / Weak / N/A]
+- ...
+
+### Information Gain Markers: [Strong / Needs Work / Weak]
+- ...
+
 ## Line-Level Notes
 
 - [Line/section reference]: [Specific feedback]
@@ -196,9 +270,9 @@ IMPORTANT: Every review MUST begin with the Gate Evaluation block below. This bl
 
 **pass:** All dimensions Strong or at most one Needs Work. Hook Grade A or B. No structural issues. Ready for human approval (Gate 2).
 
-**revise:** Two or more dimensions Needs Work, OR Hook Grade C, OR structural issues that need author attention. Specific fixes identified.
+**revise:** Two or more dimensions Needs Work, OR Hook Grade C, OR structural issues that need author attention, OR Template Adherence Weak, OR Markers Weak. Specific fixes identified.
 
-**escalate:** Any dimension Weak, OR Hook Grade D, OR fundamental voice/argument problems. Needs significant rework or strategic discussion.
+**escalate:** Any dimension Weak, OR Hook Grade D, OR fundamental voice/argument problems, OR Markers Weak with fabricated experiences detected. Needs significant rework or strategic discussion.
 
 ---
 

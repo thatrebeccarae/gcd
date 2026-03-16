@@ -192,6 +192,12 @@ find "${TARGET_DIR}/skills" "${TARGET_DIR}/agents" -name '*.md' -exec \
 find "${TARGET_DIR}/skills" "${TARGET_DIR}/agents" -name '*.md' -exec \
   sed -i '' 's/dgtl-dept/pillar-four/g' {} +
 
+# Scrub author references in Python scripts
+find "${TARGET_DIR}/pipeline" -name '*.py' -exec \
+  sed -i '' 's/Rebecca-specific/Author-specific/g' {} +
+find "${TARGET_DIR}/pipeline" -name '*.py' -exec \
+  sed -i '' 's/REBECCA_BANNED/AUTHOR_BANNED/g' {} +
+
 # Scrub pipeline scripts and workflow
 if [[ -d "${TARGET_DIR}/pipeline" ]]; then
   # TARS-specific paths → generic
@@ -260,7 +266,7 @@ fi
 log "Checking for personal data leaks..."
 LEAKS=0
 for pattern in "Rebecca" "Popoloto" "gcd-dev" "dgtl dept" "/Users/tars" "tars.local"; do
-  MATCHES=$(grep -r --include='*.md' --include='*.json' --include='*.sh' "$pattern" \
+  MATCHES=$(grep -r --include='*.md' --include='*.json' --include='*.sh' --include='*.py' "$pattern" \
     "${TARGET_DIR}/skills" "${TARGET_DIR}/agents" "${TARGET_DIR}/.planning" "${TARGET_DIR}/pipeline" 2>/dev/null || true)
   if [[ -n "$MATCHES" ]]; then
     echo "  LEAK: '$pattern' found:"

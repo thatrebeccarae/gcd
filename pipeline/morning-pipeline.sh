@@ -234,9 +234,13 @@ for brief in "${BRIEF_FILES[@]+"${BRIEF_FILES[@]}"}"; do
 
   LESSONS_FILE="$VAULT/03-Areas/professional-content/strategy/editorial-lessons.md"
   EXEMPLAR_FILE="$VAULT/03-Areas/professional-content/strategy/exemplars/${EXEMPLAR_ROUTE}.md"
+  ACTIVE_CONTEXT_FILE="$VAULT/03-Areas/professional-content/strategy/active-context.md"
 
   LESSONS_CONTENT=""
   [ -f "$LESSONS_FILE" ] && LESSONS_CONTENT=$(cat "$LESSONS_FILE")
+
+  ACTIVE_CONTEXT=""
+  [ -f "$ACTIVE_CONTEXT_FILE" ] && ACTIVE_CONTEXT=$(cat "$ACTIVE_CONTEXT_FILE")
 
   VOICE_DRIFT_FILE="$VAULT/03-Areas/professional-content/strategy/voice-drift.md"
   VOICE_DRIFT_CONTENT=""
@@ -276,15 +280,20 @@ print('\n---\n'.join(truncated))
     if [ $ATTEMPT -eq 1 ]; then
       # --- INITIAL DRAFT ---
       log "--- PRODUCE (attempt $ATTEMPT): $filename ---"
-      PRODUCE_PROMPT="You are a content producer for Your Name's professional content pipeline.
+      PRODUCE_PROMPT="You are writing a LinkedIn post AS Your Name — not about an industry topic, but about Your Name's direct experience with it.
 
-BRIEF:
+THE MOST IMPORTANT RULE: Your Name is the protagonist, not the commentator. The brief below is SOURCE MATERIAL — a signal from the industry. Your job is to connect that signal to something Your Name has personally built, experienced, or observed. If you can't find a personal connection, use the Active Context section below to find one.
+
+BRIEF (source material — NOT the thesis):
 $BRIEF_CONTENT
+
+REBECCA'S ACTIVE CONTEXT (what she's actually building/doing right now):
+$ACTIVE_CONTEXT
 
 VOICE GUIDE:
 $VOICE_CONTENT
 
-EDITORIAL LESSONS (follow every rule):
+EDITORIAL LESSONS (follow every ALWAYS/NEVER rule — these are derived from measured performance data):
 $LESSONS_CONTENT
 
 VOICE DRIFT PATTERNS (apply promoted rules, consider candidates):
@@ -293,16 +302,41 @@ $VOICE_DRIFT_CONTENT
 EXEMPLARS (study patterns, do not copy):
 $EXEMPLAR_CONTENT
 
-Produce a draft following these rules:
-- Route: $route
-- If linkedin: Write a LinkedIn post (800-1200 chars body). Hook in first 2 lines. Line breaks for readability. End with question or CTA. 3-5 hashtags.
-- If essay: Write a Substack essay (1500-3000 words). Include data/examples from key articles. Personal angle + industry analysis.
+WHAT PERFORMS (from 33 measured posts):
+- Dual performers (>1K impressions AND >1.5% engagement) have: (1) first-person authority, (2) specific detail/numbers, (3) clear CTA or invitational close
+- Career-threat framing outperforms industry-analysis framing 10x on the same topic
+- Posts with named people/companies get 2-3x impressions
+- Builder proof-of-work posts (concrete artifacts) drive highest comment rates
+- Posts with ONLY a generic hot take and no personal grounding get <500 impressions
+- Exchange CTAs ('Comment X and I'll DM you') outperform passive CTAs 3x
+- Personality micro-posts (sub-50 words, pure voice) average 2.34% engagement with zero underperformers
+
+WHAT FAILS (every pipeline-generated draft was rejected because of these patterns):
+- Abstract industry analysis without personal grounding (<400 impressions)
+- 'Company X is doing Y' framing where Your Name is absent from the narrative
+- Attribution-led posts (citing someone else's insight as thesis) suppress engagement
+- Series companion posts that exist to promote Substack
+- Generic hot takes without 'I've seen...' or 'When I...' or 'I built...'
+
+HOW TO WRITE THIS POST:
+1. Find the connection between the brief's signal and Your Name's DIRECT EXPERIENCE (from Active Context)
+2. Lead with Your Name's experience/build/observation — NOT the industry news
+3. Use the industry signal as evidence or context, not as the opening
+4. Frame through career/identity lens when possible — 'what this means for YOUR role' > 'what this means for the industry'
+5. Name specific tools, costs, timelines, people — never generics
+6. End with an exchange CTA (DM-gate) or debate-inviting closer — never 'link in comments'
+
+Route: $route
+- If linkedin: Write a LinkedIn post (800-1200 chars body). Hook in first 2 lines. Short paragraphs (1-2 sentences). 3-5 hashtags.
+- If essay: Write a Substack essay (1500-3000 words). Personal angle FIRST, then industry analysis as supporting evidence.
 - If twitter-thread: Write a Twitter thread (3-8 tweets, 280 chars each). Hook tweet must stand alone.
 
-CRITICAL VOICE RULES:
-- Observe before prescribing — react to specific news, don't lecture
-- Details over generalities — name the tool, the moment, the specific experience
+VOICE RULES (non-negotiable):
+- Open with a claim, never a question. Contrarian reframe is the default hook pattern.
+- 'I built X' or 'I've seen X' before 'Company Y did Z'
+- Details over generalities — name the tool, the dollar amount, the timeline
 - Never preachy. If it sounds like a TED talk, rewrite it.
+- Em-dashes for parenthetical asides. Short declaratives to land points.
 - The bialetti, not 'coffee' — sensory specificity makes it yours
 
 Output ONLY the complete draft file content starting with frontmatter. No commentary, no code fences, no summary. Start with ---.
@@ -341,6 +375,9 @@ brief_slug: $BRIEF_SLUG
 CURRENT DRAFT (with editor's inline <!-- REVIEW: ... --> comments):
 $CURRENT_DRAFT
 
+REBECCA'S ACTIVE CONTEXT (use this to ground the post in her real work):
+$ACTIVE_CONTEXT
+
 VOICE GUIDE:
 $VOICE_CONTENT
 
@@ -357,9 +394,11 @@ ORIGINAL BRIEF:
 $BRIEF_CONTENT
 
 Apply ALL the editor's review comments. Remove every <!-- REVIEW: ... --> comment after addressing it. The revised draft must:
+- Make Your Name the PROTAGONIST — if the editor flagged missing personal grounding, add specific details from Active Context
 - Fix every issue the editor flagged
 - Stay within platform constraints ($route)
 - Sound like Your Name — direct, specific, observational, never preachy
+- Include named tools, costs, timelines from her actual work — never generics
 
 Output ONLY the revised file content starting with ---. No commentary, no code fences. Update status to 'draft' in frontmatter."
 
@@ -393,7 +432,7 @@ sys.stdout.write(content)
     log "--- REVIEW (attempt $ATTEMPT): $(basename "$OUTPUT_FILE") ---"
     DRAFT_CONTENT=$(cat "$OUTPUT_FILE")
 
-    REVIEW_PROMPT="You are an editorial reviewer for Your Name's content pipeline.
+    REVIEW_PROMPT="You are an editorial reviewer for Your Name's content pipeline. Your #1 job is to catch posts that sound like industry commentary instead of Your Name's personal voice.
 
 DRAFT:
 $DRAFT_CONTENT
@@ -410,12 +449,18 @@ $EXEMPLAR_CONTENT
 ORIGINAL BRIEF:
 $BRIEF_CONTENT
 
-Review the draft on these criteria:
-1. Hook grade (A/B/C/D) — does the opening stop the scroll?
-2. Voice match — does it sound like Your Name (direct, builder-operator, specific, NEVER preachy)?
-3. Structure — clear flow, appropriate length for route ($route)?
-4. Argument quality — specific claims backed by evidence/experience?
-5. CTA effectiveness — does it drive engagement?
+Review the draft on these criteria (in priority order):
+1. **Your Name as protagonist** — Is Your Name's direct experience, build, or observation the CORE of this post? If the post could be written by any industry analyst, it FAILS. Look for: 'I built', 'I've seen', 'When I', named tools she uses, specific costs/timelines from her work. If the post is primarily 'Company X did Y' without Your Name's personal stake, mark DECISION:revise.
+2. **Hook grade (A/B/C/D)** — Does the opening stop the scroll? Contrarian reframe or personal confession hooks preferred. Abstract industry observations fail.
+3. **Voice match** — Does it sound like Your Name (direct, builder-operator, specific, NEVER preachy)? Check for AI tells: numbered lists with parallel structure, 'Let's dive in', three-part thesis, hedging every claim.
+4. **Specificity** — Named tools, dollar amounts, timelines, people? Or generic 'AI tools', 'marketing teams', 'the industry'?
+5. **CTA effectiveness** — Exchange CTA (DM-gate, debate-inviting closer) preferred. 'Link in comments' or 'What do you think?' fail.
+
+AUTOMATIC FAIL (mark DECISION:revise immediately):
+- Post opens with industry news instead of Your Name's experience
+- No first-person authority in the first 3 paragraphs
+- Post could be written by anyone — nothing ties it to Your Name specifically
+- Uses 'game-changer', 'landscape', 'navigate', 'leverage', 'ecosystem', or 'unlock'
 
 DECISION: If the draft meets quality bar on ALL criteria, output DECISION:pass. If ANY criterion fails, output DECISION:revise and add inline <!-- REVIEW: ... --> comments where fixes are needed.
 

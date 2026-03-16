@@ -135,7 +135,7 @@ metrics_file = '$METRICS_FILE'
 content_dir = '$CONTENT_DIR'
 period_start = '$PERIOD_START'
 
-# Deduplicate metrics
+# Deduplicate metrics — each JSONL line has {"posts":[...]} wrapper
 seen = {}
 with open(metrics_file, 'r') as f:
     for line in f:
@@ -144,13 +144,76 @@ with open(metrics_file, 'r') as f:
             continue
         try:
             entry = json.loads(line)
-            aid = entry.get('activityId') or entry.get('activity_id') or entry.get('id')
-            if aid:
-                seen[aid] = entry
+            posts = entry.get('posts', [])
+            if posts:
+                for post in posts:
+                    aid = post.get('activityId') or post.get('activity_id') or post.get('id')
+                    if aid:
+                        seen[aid] = post
+            else:
+                aid = entry.get('activityId') or entry.get('activity_id') or entry.get('id')
+                if aid:
+                    seen[aid] = entry
         except json.JSONDecodeError:
             pass
 
 metrics = list(seen.values())
+
+# Build lookup: activity_id -> human-readable title/snippet
+# Source 1: content files (frontmatter title)
+title_lookup = {}
+for year_dir in glob.glob(os.path.join(content_dir, '*')):
+    if not os.path.isdir(year_dir):
+        continue
+    for fpath in glob.glob(os.path.join(year_dir, '*.md')):
+        if fpath.endswith('.draft.md'):
+            continue
+        try:
+            with open(fpath, 'r') as f:
+                text = f.read(4096)
+            fm_match = re.match(r'^---\s*\n(.*?)\n---', text, re.DOTALL)
+            if not fm_match:
+                continue
+            fm = {}
+            for line in fm_match.group(1).split('\n'):
+                if ':' in line:
+                    key, _, val = line.partition(':')
+                    fm[key.strip()] = val.strip().strip('\"').strip(\"'\")
+            # Index by activity_id or post_url
+            aid = fm.get('activity_id', '')
+            if aid:
+                title_lookup[aid] = fm.get('title', '') or os.path.basename(fpath).replace('.md', '')
+            post_url = fm.get('post_url', '')
+            url_match = re.search(r'activity[:\-](\d+)', post_url)
+            if url_match:
+                title_lookup[url_match.group(1)] = fm.get('title', '') or os.path.basename(fpath).replace('.md', '')
+        except Exception:
+            pass
+
+# Source 2: LinkedIn export Shares.csv (first ~80 chars of post text)
+import csv, urllib.parse
+export_dir = '$EXPORT_DIR'
+latest_export = ''
+if os.path.isdir(export_dir):
+    exports = sorted([d for d in os.listdir(export_dir) if d.startswith('20')], reverse=True)
+    if exports:
+        latest_export = os.path.join(export_dir, exports[0])
+if latest_export and os.path.exists(os.path.join(latest_export, 'Shares.csv')):
+    with open(os.path.join(latest_export, 'Shares.csv'), 'r', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            link = urllib.parse.unquote(row.get('ShareLink', ''))
+            id_match = re.search(r'(?:activity|share)[:\-](\d+)', link)
+            if id_match:
+                aid = id_match.group(1)
+                if aid not in title_lookup:
+                    snippet = (row.get('ShareCommentary', '') or '')[:80].strip()
+                    if snippet:
+                        title_lookup[aid] = snippet + ('...' if len(row.get('ShareCommentary', '')) > 80 else '')
+
+def get_title(m):
+    aid = str(m.get('activityId') or m.get('activity_id') or '')
+    return title_lookup.get(aid, f'Post {aid[-6:]}')
 
 # Calculate aggregate stats
 total_impressions = 0
@@ -188,12 +251,14 @@ summary = {
     'avg_engagement_rate': round(avg_eng * 100, 2),
     'median_engagement_rate': round(median_eng * 100, 2),
     'top_by_impressions': [{
+        'title': get_title(m),
         'activity_id': m.get('activityId') or m.get('activity_id'),
         'impressions': int(m.get('impressions', 0) or 0),
         'reactions': int(m.get('reactions', 0) or m.get('likes', 0) or 0),
         'comments': int(m.get('comments', 0) or 0)
     } for m in top_by_impressions],
     'top_by_engagement': [{
+        'title': get_title(m),
         'activity_id': m.get('activityId') or m.get('activity_id'),
         'impressions': int(m.get('impressions', 0) or 0),
         'reactions': int(m.get('reactions', 0) or m.get('likes', 0) or 0),
@@ -369,10 +434,11 @@ REPORT STRUCTURE (follow this order):
 
 STYLE:
 - Data-driven, concise, no fluff
-- Reference specific posts by name when discussing performance
+- ALWAYS reference posts by their title (from the 'title' field in metrics data), NEVER by activity ID — activity IDs are meaningless to the reader
+- NEVER speculate or hedge with 'likely', 'probably', 'suggests', 'may' — you have the full dataset. State what the data shows. If a post is old, say its date. If engagement is high because impressions are low, say that with the numbers. No guessing.
 - Include tables for data comparisons
 - Compare to previous week where possible
-- Be honest about gaps and measurement limitations
+- Only flag gaps where data genuinely does not exist. You must use all data provided — never leave available data unexamined.
 
 Output ONLY the complete markdown file starting with ---. No commentary, no code fences."
 

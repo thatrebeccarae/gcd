@@ -1,7 +1,7 @@
 ---
 name: gcd-review
 description: Run editorial review on a draft piece. Invokes gcd-reviewer agent, parses Decision (pass/revise/escalate), injects inline HTML comments, updates frontmatter. Use when user runs /gcd:review.
-tools: Read, Write, Glob
+tools: Read, Write, Glob, Bash
 ---
 
 # GCD Review
@@ -118,9 +118,60 @@ Before invoking the agent, strip ALL existing `<!-- REVIEW: ... -->` HTML commen
 3. Remove all `<!-- REVIEW: ... -->` comment lines from the body (preserve frontmatter unchanged)
 4. Write the cleaned file back (frontmatter + cleaned body)
 
-**After writing:** Re-read the file to get the cleaned content for the agent invocation in Step 5.
+**After writing:** Re-read the file to get the cleaned content for the agent invocation in Step 6.
 
-### Step 5: Invoke Editor-in-Chief Agent
+### Step 5: Run Automated Scoring
+
+Before spawning the reviewer agent, run the automated scoring script to get objective metrics and check auto-gate thresholds.
+
+**Run the script using the Bash tool:**
+```
+python3 ~/your-repo/pipeline/analyze_content.py {draft_path}
+```
+
+The script outputs JSON to stdout. Capture and parse the full JSON output.
+
+**Auto-gate threshold checks:**
+
+Parse the JSON scorecard and check:
+1. `metrics.burstiness` — if less than `0.3`: AUTO-REJECT
+2. `banned_phrases` array — if length greater than `5`: AUTO-REJECT
+
+**If either threshold is violated (AUTO-REJECT):**
+
+1. Set frontmatter `review_decision: revise` (keep `status: draft` unchanged)
+2. Display terminal output:
+
+```
+=== Editorial Review: [Title or piece_id] ===
+
+AUTO-GATED by scoring script. Review agent NOT spawned.
+
+Failed thresholds:
+- Burstiness: {metrics.burstiness} (minimum: 0.3)
+- Banned phrases: {len(banned_phrases)} found (maximum: 5)
+
+Banned phrases found:
+{for each banned phrase: "  - Line {line}: \"{phrase}\""}
+
+Script Scores:
+  Burstiness:      {metrics.burstiness}
+  TTR:             {metrics.ttr}
+  Banned phrases:  {len(banned_phrases)}
+  Flesch score:    {metrics.flesch_reading_ease}
+  Markers:         {metrics.marker_counts.personal_experience} personal / {metrics.marker_counts.original_data} data / {metrics.marker_counts.unique_insight} insight
+
+Auto-gated by scoring script. Fix these issues and re-run /gcd:review [piece_id].
+```
+
+3. Write the updated frontmatter to the draft file
+4. **STOP** — do NOT proceed to Step 6. Do NOT spawn the reviewer agent.
+
+**If both thresholds pass:**
+
+Store the full JSON scorecard string as `scorecard_json`. Continue to Step 6.
+
+### Step 6: Invoke Editor-in-Chief Agent
 
 Pass the draft file path to the gcd-reviewer agent with this context:
 
@@ -134,14 +185,19 @@ Platform: {platform from frontmatter}
 
 Draft file: {absolute path to draft file}
 
+Scoring Scorecard (from analyze_content.py):
+{scorecard_json}
+
+Use this scorecard to inform your review. The burstiness, TTR, banned phrase locations, and marker counts are objective — incorporate them into your assessment rather than re-evaluating these dimensions subjectively.
+
 Read the draft file and the voice guide at ~/your-vault/09-Profile/voice-guide.md, then produce your full editorial review following your output format.
 ```
 
-**Agent invocation:** The gcd-reviewer agent will read the draft, evaluate it against the review framework, and return structured feedback.
+**Agent invocation:** The gcd-reviewer agent will read the draft, evaluate it against the review framework, and return structured feedback. The scorecard provides objective metrics so the agent can focus on subjective editorial judgment.
 
 **Store the complete agent output.** The next step parses this output.
 
-### Step 6: Parse Decision
+### Step 7: Parse Decision
 
 Extract the `Decision:` value from the Gate Evaluation block in the agent's output.
 
@@ -154,6 +210,8 @@ Extract the `Decision:` value from the Gate Evaluation block in the agent's outp
 - **Argument:** [Strong/Needs Work/Weak]
 - **SEO:** [Strong/Needs Work/Weak]
 - **Word Count:** [N]
+- **Template Adherence:** [Strong/Needs Work/Weak/N/A]
+- **Markers:** [Strong/Needs Work/Weak]
 - **Decision:** [pass/revise/escalate]
 
 **Overall Assessment:** [text]
@@ -176,20 +234,22 @@ Check the gcd-reviewer agent output for the Gate Evaluation block.
 ```
 STOP.
 
-**Also extract for terminal display (Step 9):**
+**Also extract for terminal display (Step 10):**
 - Hook Grade
 - Voice & Tone
 - Structure
 - Argument
 - SEO
 - Word Count
+- Template Adherence
+- Markers
 - Overall Assessment
 - Strongest Element
 - Priority Fix
 
 Store all extracted values.
 
-### Step 7: Inject HTML Comments
+### Step 8: Inject HTML Comments
 
 Parse the agent's "Detailed Feedback" and "Line-Level Notes" sections to generate inline HTML comments.
 
@@ -210,7 +270,7 @@ Parse the agent's "Detailed Feedback" and "Line-Level Notes" sections to generat
    - Use the feedback text as the issue description
 
 3. **Insert comments in the draft:**
-   - Read the current draft file (cleaned in Step 4)
+   - Read the current draft file (cleaned in Step 4, scored in Step 5)
    - For each comment:
      - Identify the relevant section/paragraph in the draft
      - Insert the comment line BEFORE that section/paragraph
@@ -240,9 +300,9 @@ I've been building AI agents for six months.
 The hardest part isn't the prompts or the tools. It's knowing when to stop.
 ```
 
-### Step 8: Update Frontmatter
+### Step 9: Update Frontmatter
 
-Based on the parsed decision from Step 6, update the draft's frontmatter fields.
+Based on the parsed decision from Step 7, update the draft's frontmatter fields.
 
 **Decision: pass**
 - Set `status: reviewed`
@@ -257,7 +317,7 @@ Based on the parsed decision from Step 6, update the draft's frontmatter fields.
 - Set `review_decision: escalate`
 
 **Update process:**
-1. Read the draft file (with injected comments from Step 7)
+1. Read the draft file (with injected comments from Step 8)
 2. Parse frontmatter
 3. Update ONLY `status` and `review_decision` fields
 4. Preserve ALL other frontmatter fields exactly as-is (do not add, remove, or modify any other fields)
@@ -268,9 +328,9 @@ Based on the parsed decision from Step 6, update the draft's frontmatter fields.
 - If `review_decision` field exists, overwrite it with the new decision value
 - For `status`: update value or keep unchanged depending on decision (see above)
 
-### Step 9: Display Terminal Summary
+### Step 10: Display Terminal Summary
 
-Show the user a structured summary of the review outcome.
+Show the user a structured summary of the review outcome. Include Script Scores from the scorecard captured in Step 5 for all decision types.
 
 **For decision: pass**
 
@@ -284,6 +344,13 @@ Structure: [rating]
 Argument: [rating]
 SEO: [rating]
 Word Count: [N]
+
+Script Scores:
+  Burstiness:      {metrics.burstiness}
+  TTR:             {metrics.ttr}
+  Banned phrases:  {len(banned_phrases)}
+  Flesch score:    {metrics.flesch_reading_ease}
+  Markers:         {metrics.marker_counts.personal_experience} personal / {metrics.marker_counts.original_data} data / {metrics.marker_counts.unique_insight} insight
 
 Overall: [assessment]
 Strongest Element: [element]
@@ -308,6 +375,13 @@ Argument: [rating]
 SEO: [rating]
 Word Count: [N]
 
+Script Scores:
+  Burstiness:      {metrics.burstiness}
+  TTR:             {metrics.ttr}
+  Banned phrases:  {len(banned_phrases)}
+  Flesch score:    {metrics.flesch_reading_ease}
+  Markers:         {metrics.marker_counts.personal_experience} personal / {metrics.marker_counts.original_data} data / {metrics.marker_counts.unique_insight} insight
+
 Overall: [assessment]
 Strongest Element: [element]
 Priority Fix: [fix]
@@ -330,6 +404,13 @@ Argument: [rating]
 SEO: [rating]
 Word Count: [N]
 
+Script Scores:
+  Burstiness:      {metrics.burstiness}
+  TTR:             {metrics.ttr}
+  Banned phrases:  {len(banned_phrases)}
+  Flesch score:    {metrics.flesch_reading_ease}
+  Markers:         {metrics.marker_counts.personal_experience} personal / {metrics.marker_counts.original_data} data / {metrics.marker_counts.unique_insight} insight
+
 Overall: [assessment]
 Strongest Element: [element]
 Priority Fix: [fix]
@@ -345,6 +426,7 @@ Re-run /gcd:review [piece_id] after addressing concerns.
 ## Files
 
 - **All content:** `~/your-vault/content/**/*.md`
+- **Scoring script:** `~/your-repo/pipeline/analyze_content.py`
 - **gcd-reviewer agent:** `~/.claude/agents/gcd-reviewer.md`
 - **Voice guide:** `~/your-vault/09-Profile/voice-guide.md`
 

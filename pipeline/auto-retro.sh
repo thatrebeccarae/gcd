@@ -59,38 +59,7 @@ fi
 log "Metrics file: $TOTAL_LINES lines"
 
 # --- Step 2: Deduplicate metrics by activityId (keep latest per ID) ---
-DEDUPED_METRICS=$(python3 << 'PYEOF'
-import json, sys
-
-metrics_file = sys.argv[1] if len(sys.argv) > 1 else ""
-seen = {}
-errors = 0
-
-with open(metrics_file, 'r') as f:
-    for i, line in enumerate(f, 1):
-        line = line.strip()
-        if not line:
-            continue
-        try:
-            entry = json.loads(line)
-            aid = entry.get("activityId") or entry.get("activity_id") or entry.get("id")
-            if aid:
-                seen[aid] = entry  # later entries overwrite earlier
-            else:
-                print(f"WARN: Line {i} has no activityId", file=sys.stderr)
-                errors += 1
-        except json.JSONDecodeError:
-            print(f"WARN: Line {i} is not valid JSON", file=sys.stderr)
-            errors += 1
-
-# Output deduped as JSON array
-print(json.dumps(list(seen.values()), indent=2))
-if errors:
-    print(f"PARSE_ERRORS:{errors}", file=sys.stderr)
-PYEOF
-) 2>>"$LOG" <<< "" || true
-
-# Run the actual dedup (the heredoc above was the script, now invoke it properly)
+# Each JSONL line is {"source":..., "posts":[{activityId,...},...]} — unwrap posts array
 DEDUPED_METRICS=$(python3 -c "
 import json, sys
 
@@ -105,12 +74,21 @@ with open(metrics_file, 'r') as f:
             continue
         try:
             entry = json.loads(line)
-            aid = entry.get('activityId') or entry.get('activity_id') or entry.get('id')
-            if aid:
-                seen[aid] = entry
+            # Unwrap posts array (userscript format)
+            posts = entry.get('posts', [])
+            if posts:
+                for post in posts:
+                    aid = post.get('activityId') or post.get('activity_id') or post.get('id')
+                    if aid:
+                        seen[aid] = post  # later entries overwrite earlier
             else:
-                print(f'WARN: Line {i} has no activityId', file=sys.stderr)
-                errors += 1
+                # Fallback: maybe it's a flat post entry
+                aid = entry.get('activityId') or entry.get('activity_id') or entry.get('id')
+                if aid:
+                    seen[aid] = entry
+                else:
+                    print(f'WARN: Line {i} has no posts array and no activityId', file=sys.stderr)
+                    errors += 1
         except json.JSONDecodeError:
             print(f'WARN: Line {i} is not valid JSON', file=sys.stderr)
             errors += 1
@@ -657,12 +635,21 @@ log "Promotion pass: $PROMOTIONS promoted, $DISCARDS discarded"
 log "--- EXEMPLARS: Evaluating rotation ---"
 
 if [ -f "$EXEMPLARS_FILE" ]; then
+  # Write analysis and metrics to temp files to avoid shell quoting issues
+  ANALYSIS_TMPFILE=$(mktemp)
+  METRICS_TMPFILE=$(mktemp)
+  echo "$ANALYSIS_OUTPUT" > "$ANALYSIS_TMPFILE"
+  echo "$METRICS_SUMMARY" > "$METRICS_TMPFILE"
+  trap 'rm -f "$ANALYSIS_TMPFILE" "$METRICS_TMPFILE"' EXIT
+
   ROTATION_RESULT=$(python3 -c "
 import json, sys, re
 from datetime import datetime
 
-analysis = '''$(echo "$ANALYSIS_OUTPUT" | sed "s/'''/\\\\'\\\\'\\\\'/" )'''
-metrics_summary = json.loads('''$METRICS_SUMMARY''')
+with open('$ANALYSIS_TMPFILE', 'r') as f:
+    analysis = f.read()
+with open('$METRICS_TMPFILE', 'r') as f:
+    metrics_summary = json.load(f)
 exemplars_file = '$EXEMPLARS_FILE'
 rotation_log = '$ROTATION_LOG'
 today = '$TODAY'

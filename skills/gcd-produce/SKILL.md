@@ -182,6 +182,26 @@ Brief:
 
 Read the voice guide at ~/your-vault/09-Profile/voice-guide.md before drafting.
 
+Read the anti-AI detection rules at ~/your-vault/03-Areas/professional-content/strategy/ai-detection-rules.md before drafting. Avoid every phrase on the banned list.
+
+TEMPLATE SELECTION:
+Read the content templates directory: ~/your-vault/03-Areas/professional-content/strategy/content-templates/
+Select the LinkedIn template that best matches this brief's angle:
+- Build log: linkedin-build-log.md (building/shipping something)
+- Contrarian take: linkedin-contrarian-take.md (challenging assumptions)
+- Career reframe: linkedin-career-reframe.md (career identity angle)
+- Stop paying for X: linkedin-stop-paying-for-x.md (replacing paid tools)
+- Personality micro: linkedin-personality-micro.md (short personal observation)
+- Or an adapted-*.md template if the topic fits better
+Read the selected template and follow its structure.
+
+INFORMATION GAIN MARKERS — MANDATORY:
+Where you cannot write from Your Name's documented experience, insert these markers instead of fabricating:
+- [PERSONAL EXPERIENCE: description of what's needed] — for first-person stories only Your Name can tell
+- [ORIGINAL DATA: description of what's needed] — for proprietary metrics or test results
+- [UNIQUE INSIGHT: description of what's needed] — for original analysis beyond source material
+A draft with honest markers is ALWAYS better than a draft with fabricated experiences. Zero tolerance for invented first-person anecdotes, fake client work, or made-up metrics.
+
 Output: Save to {computed output path}
 
 Include this YAML frontmatter at the top of the file:
@@ -269,6 +289,29 @@ Research brief: ~/your-vault/01-Inbox/research-briefs/{today's date}-{slug}.md �
 {If user provided feedback: "User notes for this draft: {feedback text}"}
 
 Read the voice guide at ~/your-vault/09-Profile/voice-guide.md before drafting.
+
+Read the anti-AI detection rules at ~/your-vault/03-Areas/professional-content/strategy/ai-detection-rules.md before drafting. Avoid every phrase on the banned list.
+
+TEMPLATE SELECTION:
+Read the content templates directory: ~/your-vault/03-Areas/professional-content/strategy/content-templates/
+Select the Substack template that best matches this brief:
+- Thought leadership: substack-thought-leadership.md (opinion/analysis arguing a position)
+- Case study / builder narrative: substack-case-study.md (specific project or implementation)
+- How-to guide / narrative tutorial: substack-how-to-guide.md (walking through a process)
+- Or an adapted-*.md template if the topic fits better
+Read the selected template and follow its structure.
+
+ANSWER-FIRST FORMATTING — MANDATORY FOR SUBSTACK:
+- Lead each H2 section with a direct answer (2-3 sentences) before elaboration
+- Include a Citation Capsule at the end of each H2 section: a self-contained paragraph (2-3 sentences, 30-80 words) summarizing the section's key claim with enough context for independent citation
+- Front-load the thesis in the opening paragraph — main claim extractable from first 2-3 sentences
+
+INFORMATION GAIN MARKERS — MANDATORY:
+Where you cannot write from Your Name's documented experience, insert these markers instead of fabricating:
+- [PERSONAL EXPERIENCE: description of what's needed] — for first-person stories only Your Name can tell
+- [ORIGINAL DATA: description of what's needed] — for proprietary metrics or test results
+- [UNIQUE INSIGHT: description of what's needed] — for original analysis beyond source material
+A draft with honest markers is ALWAYS better than a draft with fabricated experiences. Zero tolerance for invented first-person anecdotes, fake client work, or made-up metrics.
 
 Output: Save to {computed output path}
 
@@ -449,6 +492,18 @@ Brief:
 
 Read the voice guide at ~/your-vault/09-Profile/voice-guide.md before drafting.
 Pay special attention to the Twitter-specific section.
+
+Read the anti-AI detection rules at ~/your-vault/03-Areas/professional-content/strategy/ai-detection-rules.md before drafting. Avoid every phrase on the banned list.
+
+TEMPLATE SELECTION:
+Select the same template you would for a LinkedIn post on this topic (from ~/your-vault/03-Areas/professional-content/strategy/content-templates/), then compress its structure for thread format.
+
+INFORMATION GAIN MARKERS — MANDATORY:
+Where you cannot write from Your Name's documented experience, insert these markers instead of fabricating:
+- [PERSONAL EXPERIENCE: description of what's needed] — for first-person stories only Your Name can tell
+- [ORIGINAL DATA: description of what's needed] — for proprietary metrics or test results
+- [UNIQUE INSIGHT: description of what's needed] — for original analysis beyond source material
+A draft with honest markers is ALWAYS better than a draft with fabricated experiences. Zero tolerance for invented first-person anecdotes, fake client work, or made-up metrics.
 
 Output: Save to {computed output path}
 

@@ -118,13 +118,18 @@ else
 fi
 
 # --- Trigger auto-retro + weekly report on your host ---
-log "Triggering auto-retro on your host..."
-ssh tars "nohup bash -c '~/auto-retro.sh && ~/auto-weekly-report.sh' > ~/your-vault/01-Inbox/pipeline-runs/${TODAY}-triggered-retro.log 2>&1 &" 2>>"$LOG"
-
-if [ $? -eq 0 ]; then
-  log "Auto-retro + weekly report triggered on your host"
+# MUST use launchctl kickstart (not ssh nohup) — claude --print needs macOS keychain for OAuth
+log "Triggering auto-retro via LaunchAgent on your host..."
+your host_UID=$(ssh tars "id -u" 2>/dev/null)
+if [ -n "$your host_UID" ]; then
+  ssh tars "launchctl kickstart gui/${your host_UID}/com.gcd.auto-retro" 2>>"$LOG"
+  if [ $? -eq 0 ]; then
+    log "Auto-retro + weekly report triggered on your host (LaunchAgent kickstart)"
+  else
+    log "WARNING: Failed to kickstart LaunchAgent on your host"
+  fi
 else
-  log "WARNING: Failed to trigger retro on your host via SSH"
+  log "WARNING: Could not get your host UID — retro will run on its next scheduled time"
 fi
 
 # --- Slack notification ---

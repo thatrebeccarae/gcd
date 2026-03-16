@@ -28,6 +28,74 @@ Before drafting, also read:
    — where {route} = linkedin, essay, or twitter-thread (matching the piece's route).
    — Study the hook patterns, voice, and structure. Your draft should feel like it belongs in this collection.
    — Do NOT copy exemplar content. Learn the patterns, apply them freshly.
+3. **Anti-AI detection rules:** `~/your-vault/03-Areas/professional-content/strategy/ai-detection-rules.md`
+   — Read the banned phrase list, burstiness/TTR guidance, and experience signal patterns BEFORE drafting.
+   — If you catch yourself using a phrase from the banned list, rewrite immediately.
+
+---
+
+## Template Selection
+
+Before drafting, select the appropriate template from `~/your-vault/03-Areas/professional-content/strategy/content-templates/`.
+
+**Template selection rules:**
+
+For LinkedIn posts (`route: linkedin`), match the brief's angle or topic to one of:
+- `linkedin-build-log.md` — When the brief describes building/shipping something (tools, projects, prototypes)
+- `linkedin-contrarian-take.md` — When the brief challenges a common assumption or industry norm
+- `linkedin-career-reframe.md` — When the brief connects marketing/tech to career identity or professional evolution
+- `linkedin-stop-paying-for-x.md` — When the brief argues for replacing a paid tool/service with something better/cheaper
+- `linkedin-personality-micro.md` — When the brief is a short personal observation, hot take, or reaction (no template structure — just voice)
+
+For Substack essays (`route: essay`), match to:
+- `substack-thought-leadership.md` — Opinion/analysis pieces arguing a position
+- `substack-case-study.md` — Builder narratives about specific projects or implementations
+- `substack-how-to-guide.md` — Narrative tutorials walking through a process
+
+For either platform, if the topic fits an adapted template better, use the adapted version:
+- `adapted-comparison.md` — Tool/approach comparisons
+- `adapted-data-research.md` — Data-driven analysis pieces
+- `adapted-faq-knowledge.md` — Myth-busting or FAQ-style content
+- `adapted-listicle.md` — Curated lists with operator perspective
+- `adapted-news-analysis.md` — Reactive commentary on industry news
+- `adapted-pillar-page.md` — Comprehensive topic coverage (LinkedIn: extraction guide; Substack: multi-part series)
+- `adapted-product-review.md` — Operator reviews from daily-use authority
+- `adapted-roundup.md` — Curated roundups with exclusion rationale
+- `adapted-tutorial.md` — Code/config-heavy technical tutorials
+
+For Twitter threads (`route: twitter-thread`):
+- Select the same template you would for LinkedIn, then compress the structure for thread format.
+
+**After selecting:** Read the template file. Follow its structure, section order, and marker placement. The template IS the outline.
+
+---
+
+## Information Gain Markers
+
+Every draft MUST use these three markers where you cannot write from documented experience:
+
+- `[PERSONAL EXPERIENCE]` — Placeholder for first-person stories, anecdotes, or "When I..." moments that only Your Name can provide. NEVER fabricate these. If the template calls for personal experience and you don't have documented source material, insert this marker.
+- `[ORIGINAL DATA]` — Placeholder for proprietary metrics, test results, or data only Your Name has. Examples: conversion rates, A/B test results, cost comparisons from her actual projects.
+- `[UNIQUE INSIGHT]` — Placeholder for Your Name's original analysis or contrarian take that goes beyond what sources provide. This is where her operator perspective adds information gain.
+
+**Rules:**
+1. A draft with markers is ALWAYS better than a draft with fabricated experiences
+2. You may write around markers — provide context, set up why the marker matters, explain what type of content should go there
+3. Include a brief note after each marker explaining what's needed: `[PERSONAL EXPERIENCE: Need specific metrics from the Klaviyo migration project]`
+4. Minimum marker count depends on the template — check the template's marker requirements
+5. If a draft would need more than 5 [PERSONAL EXPERIENCE] markers, it likely needs a different template or should be flagged for manual drafting
+
+---
+
+## Answer-First Formatting (Substack)
+
+For Substack essays, apply answer-first formatting to maximize AEO/GEO citability:
+
+1. **Lead each H2 section with a direct answer** (2-3 sentences) before elaboration. The first paragraph under each H2 should be quotable as a standalone answer to the section's implied question.
+2. **Include a Citation Capsule** at the end of each H2 section: a self-contained paragraph (2-3 sentences, 30-80 words) that summarizes the section's key claim with enough context to be cited independently by AI systems.
+3. **Front-load the thesis** in the opening paragraph — not buried after setup. The essay's main claim should be extractable from the first 2-3 sentences.
+
+This formatting does NOT change Your Name's voice — it changes structure. The contrarian reframes, em-dashes, and rhythm beats still apply within the answer-first framework.
 
 ---
 
