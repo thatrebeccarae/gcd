@@ -102,14 +102,14 @@ log "Waiting 90 seconds for Syncthing to propagate to your host..."
 sleep 90
 
 # --- Verify your host has the file ---
-your host_HAS_FILE=$(ssh tars "test -f '$VAULT/04-Resources/linkedin-data/export-primary/$TODAY/Shares.csv' && echo 'yes' || echo 'no'" 2>/dev/null || echo "ssh_failed")
+your host_HAS_FILE=$(ssh your-server "test -f '$VAULT/04-Resources/linkedin-data/export-primary/$TODAY/Shares.csv' && echo 'yes' || echo 'no'" 2>/dev/null || echo "ssh_failed")
 
 if [ "$your host_HAS_FILE" = "yes" ]; then
   log "Confirmed: export synced to your host"
 elif [ "$your host_HAS_FILE" = "no" ]; then
   log "WARNING: Export not yet on your host — waiting another 60 seconds"
   sleep 60
-  your host_HAS_FILE=$(ssh tars "test -f '$VAULT/04-Resources/linkedin-data/export-primary/$TODAY/Shares.csv' && echo 'yes' || echo 'no'" 2>/dev/null || echo "ssh_failed")
+  your host_HAS_FILE=$(ssh your-server "test -f '$VAULT/04-Resources/linkedin-data/export-primary/$TODAY/Shares.csv' && echo 'yes' || echo 'no'" 2>/dev/null || echo "ssh_failed")
   if [ "$your host_HAS_FILE" != "yes" ]; then
     log "WARNING: Export still not on your host after 2.5 min. Retro will use whatever data is available."
   fi
@@ -120,9 +120,9 @@ fi
 # --- Trigger auto-retro + weekly report on your host ---
 # MUST use launchctl kickstart (not ssh nohup) — claude --print needs macOS keychain for OAuth
 log "Triggering auto-retro via LaunchAgent on your host..."
-your host_UID=$(ssh tars "id -u" 2>/dev/null)
+your host_UID=$(ssh your-server "id -u" 2>/dev/null)
 if [ -n "$your host_UID" ]; then
-  ssh tars "launchctl kickstart gui/${your host_UID}/com.gcd.auto-retro" 2>>"$LOG"
+  ssh your-server "launchctl kickstart gui/${your host_UID}/com.gcd.auto-retro" 2>>"$LOG"
   if [ $? -eq 0 ]; then
     log "Auto-retro + weekly report triggered on your host (LaunchAgent kickstart)"
   else
