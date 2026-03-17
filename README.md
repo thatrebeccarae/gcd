@@ -88,6 +88,10 @@ GCD applies sprint methodology to content production. You define your content pi
 
 **State layer** — `pillars.json` defines your content pillars, posting schedule, and quality gates. YAML frontmatter on every content file tracks lifecycle status. Files never move; status lives in frontmatter only.
 
+**Scoring engine** — `analyze_content.py` scores every draft on a 5-category, 100-point scale before it reaches a human reviewer. Drafts that read like AI never make it past the auto-gate.
+
+**Content templates** — 17 templates across LinkedIn, Substack, and adapted formats. Each template includes mandatory information gain markers (`[PERSONAL EXPERIENCE]`, `[ORIGINAL DATA]`, `[UNIQUE INSIGHT]`) that the producer must use instead of fabricating first-person content. Zero tolerance for invented anecdotes or fake metrics.
+
 **Skills + agents** — 10 Claude Code skills orchestrate the workflow. 7 specialized agents handle scoring, drafting, review, research, and analytics. You interact through slash commands; agents do the heavy lifting behind each one.
 
 ## Skills
@@ -98,20 +102,20 @@ GCD applies sprint methodology to content production. You define your content pi
 | `/gcd:queue` | Signal brief queue with composite scoring and pillar-fit suggestions |
 | `/gcd:plan-sprint` | Interactive sprint planning with agent-scored recommendations and pillar enforcement |
 | `/gcd:produce` | Route-dispatched content drafting (LinkedIn, Substack essay, Twitter/X thread, newsletter) |
-| `/gcd:review` | Editorial review gate — agent-powered quality check (Gate 1) |
-| `/gcd:approve` | Human approval gate (Gate 2) |
+| `/gcd:review` | Editorial review (Gate 1) — auto-gates on `analyze_content.py` scoring thresholds, then invokes agent for editorial judgment |
+| `/gcd:approve` | Human approval (Gate 2) — only pieces with `reviewed` status can be approved |
 | `/gcd:reject` | Reject a draft with feedback — preserves `.draft.md` for anti-pattern learning |
 | `/gcd:retro` | Sprint close with pipeline metrics, engagement analysis, and performance feedback loop |
 | `/seed-idea` | Capture a manual content idea as a brief stub |
-| `/write-from-signal` | Convert a signal brief into a finished draft via the appropriate agent chain |
+| `/write-from-signal` | Convert a signal brief into a finished draft via a separate agent chain (research-analyst → content-marketer → editor-in-chief → social-amplifier) with user gates between stages |
 
 ## Agents
 
 | Agent | Role |
 |-------|------|
 | `gcd-sprint-planner` | Scores briefs against pillars using composite formula (keyword 50% + pillar fit 30% + route fit 20%), detects strategy drift, applies performance boosts from historical data |
-| `gcd-producer` | Drafts content by route — LinkedIn posts, Substack essays, Twitter threads, newsletter sections. Reads voice guide before every piece. |
-| `gcd-reviewer` | Editorial review (Gate 1) — checks voice consistency, structure, hook quality (A/B/C/D grading), SEO criteria, readability. Returns pass/revise/escalate. |
+| `gcd-producer` | Template-aware drafting by route — selects from 17 content templates, enforces information gain markers, runs 5-point voice validation before save. Reads voice guide before every piece. |
+| `gcd-reviewer` | Editorial review — invoked by `/gcd:review` after auto-gate passes. Receives `analyze_content.py` scorecard as context, focuses on subjective editorial judgment: voice consistency, structure, hook quality (A/B/C/D grading), SEO criteria, template adherence, marker validation. Returns pass/revise/escalate. Critique only — never rewrites. |
 | `gcd-researcher` | Topic research for essay route — consumes RSS feeds and web sources, produces structured research briefs with data points, counter-arguments, and content angles |
 | `gcd-amplifier` | Cross-platform distribution — generates LinkedIn posts, Twitter threads, email subject lines, and pull quotes from finished content |
 | `gcd-metrics-analyst` | Pipeline analytics — throughput rates, gate performance, route comparison, high/low performer identification |
@@ -135,19 +139,58 @@ stub → draft → reviewed → approved → published → measured
 
 The `gcd-sprint-planner` agent scores signal briefs using a composite formula: keyword match (50%) + pillar fit with underrepresentation boost (30%) + route fit (20%). Historical performance data applies boosts to high-performing route+pillar combinations (+0.1) and gentle penalties to underperformers (-0.05). A 4-week rolling window detects pillar drift — if you haven't posted about a topic in two weeks, the planner surfaces it without hard-blocking.
 
-### Route-Dispatched Drafting
+### Template-Aware Drafting
 
-`/gcd:produce` routes each brief to the right agent workflow:
-- **LinkedIn post** — direct to `gcd-producer` with voice guide
-- **Substack essay** — research phase via `gcd-researcher`, then draft via `gcd-producer`
-- **Twitter/X thread** — threaded format with character-aware splitting
-- **Newsletter** — section assembly from approved pieces
+`/gcd:produce` selects from 17 content templates before drafting. The producer reads the template library, picks the best match for the brief's angle and topic, then follows the template's structure, section order, and marker placement exactly. The template is the outline — no improvisation.
+
+Templates include mandatory **information gain markers** where the producer cannot write from documented experience:
+- `[PERSONAL EXPERIENCE: description]` — first-person stories only the author can tell
+- `[ORIGINAL DATA: description]` — proprietary metrics, test results, cost comparisons
+- `[UNIQUE INSIGHT: description]` — original analysis or contrarian take beyond source material
+
+A draft with honest markers is always better than a draft with fabricated experiences. The producer runs a 5-point voice validation (rhythm, specificity, AI tells, pivot & close, voice drift) before saving.
+
+Route dispatch:
+- **LinkedIn post** — selects from 5 LinkedIn templates (build-log, contrarian-take, career-reframe, stop-paying-for-x, personality-micro) or adapted templates
+- **Substack essay** — research phase via `gcd-researcher`, then draft via `gcd-producer` using Substack templates (thought-leadership, case-study, how-to-guide)
+- **Twitter/X thread** — selects same template as LinkedIn, compresses for thread format
+- **Newsletter** — section assembly from approved pieces + original drafted section
 
 ### Two-Gate Quality
 
-**Gate 1 (Agent):** The `gcd-reviewer` catches what machines catch well — style consistency, structural issues, hook quality grading (A/B/C/D), SEO criteria, suggested title variants. Returns pass, revise, or escalate.
+**Gate 1 — `/gcd:review`** runs in two phases. First, `analyze_content.py` scores the draft on a 5-category, 100-point scale. Two metrics trigger auto-rejection before the agent is ever called: burstiness below 0.3 (sentences too uniform in length) or more than 5 banned AI phrases detected. If either threshold fails, the piece stays in `draft` status and the author gets specific feedback with line numbers. If the auto-gate passes, the `gcd-reviewer` agent receives the full scorecard and focuses on subjective editorial judgment — voice consistency, structure, hook quality grading (A/B/C/D), template adherence, marker validation, SEO criteria. The agent returns pass, revise, or escalate. On pass, the piece moves to `reviewed` status.
 
-**Gate 2 (Human):** `/gcd:approve` catches what humans catch well — tone, judgment, relevance, "does this actually sound like me?" Neither gate alone is enough. Both together cover the full surface.
+**Gate 2 — `/gcd:approve`** is pure human judgment. Only pieces with `reviewed` status can enter this gate. It catches what humans catch well — tone, judgment, relevance, "does this actually sound like me?" No agent is involved. Neither gate alone is enough. Both together cover the full surface.
+
+<details>
+<summary><strong>Scoring categories (analyze_content.py)</strong></summary>
+
+| Category | Points | What it measures |
+|----------|--------|------------------|
+| Content Quality | 30 | Depth, readability, originality, structure, engagement, grammar |
+| SEO Optimization | 20 | Heading structure, keyword placement, link tier classification |
+| E-E-A-T Signals | 15 | Author experience patterns, citations, trust signals |
+| AEO/GEO Readiness | 20 | Answer-first structure, citability, citation capsules, entities, FAQ sections |
+| Anti-AI Detection | 15 | Burstiness (sentence length variation), banned phrases, type-token ratio, passive voice |
+
+Scoring bands: 90-100 Exceptional, 80-89 Strong, 70-79 Acceptable, 60-69 Below Standard, <60 Rewrite.
+
+The anti-AI category tracks 26 trigger words (delve, tapestry, multifaceted, testament, pivotal, robust, etc.) and 16 banned phrases ("in today's digital landscape," "game-changer," "revolutionize," etc.). Burstiness measures sentence length variation — uniform sentence length is a strong AI signal.
+
+</details>
+
+<details>
+<summary><strong>Content templates (17 total)</strong></summary>
+
+**LinkedIn (5):** build-log, contrarian-take, career-reframe, stop-paying-for-x, personality-micro
+
+**Substack (3):** thought-leadership, case-study, how-to-guide
+
+**Adapted (9):** comparison, data-research, faq-knowledge, listicle, news-analysis, pillar-page, product-review, roundup, tutorial
+
+Each template defines section structure, required information gain markers with minimum counts, word count targets, and hook patterns. Templates live in your content strategy directory and can be customized or extended.
+
+</details>
 
 ### Performance Feedback Loop
 
@@ -220,6 +263,8 @@ None of these are required. GCD works with manual brief capture (`/seed-idea`) a
 ## Credits
 
 GCD was directly inspired by [Get Shit Done (GSD)](https://github.com/gsd-build/get-shit-done), which applies sprint methodology and Claude Code skills to software engineering projects. GSD proved that skills + agents + structured state could replace heavyweight project management for solo builders. GCD takes the same philosophy — plan, execute, verify, retro — and adapts it for content production workflows.
+
+The content template system and `analyze_content.py` scoring engine were inspired by [claude-blog](https://github.com/AgriciDaniel/claude-blog), which demonstrated automated content quality scoring and template-driven AI content production. The 5-category scoring model, information gain markers, and anti-AI detection heuristics were adapted from claude-blog's approach and extended for GCD's sprint-integrated pipeline.
 
 ## Contributing
 
